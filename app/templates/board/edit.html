@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Post - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('board.view', id=post.id) }}" class="inline-flex items-center text-gray-400 hover:text-gray-200 mb-4">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        Back to Post
+    </a>
+    <h1 class="text-2xl font-bold text-gray-100">Edit Post</h1>
+    <p class="text-gray-400 mt-1">Update the post details</p>
+</div>
+
+<form method="POST" class="max-w-2xl">
+    <div class="bg-dark-800 rounded-lg border border-dark-600 p-6 space-y-6">
+        <!-- Title -->
+        <div>
+            <label for="title" class="block text-sm font-medium text-gray-300 mb-2">Title *</label>
+            <input type="text" id="title" name="title" required value="{{ post.title }}"
+                class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500">
+        </div>
+        
+        <!-- Post Type & Priority -->
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <label for="post_type" class="block text-sm font-medium text-gray-300 mb-2">Post Type</label>
+                <select id="post_type" name="post_type"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+                    {% for type_id, type_name, type_icon in post_types %}
+                    <option value="{{ type_id }}" {% if post.post_type == type_id %}selected{% endif %}>{{ type_icon }} {{ type_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label for="priority" class="block text-sm font-medium text-gray-300 mb-2">Priority</label>
+                <select id="priority" name="priority"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+                    {% for pri_id, pri_name, pri_class in priorities %}
+                    <option value="{{ pri_id }}" {% if post.priority == pri_id %}selected{% endif %}>{{ pri_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <!-- Content -->
+        <div>
+            <label for="content" class="block text-sm font-medium text-gray-300 mb-2">Content *</label>
+            <textarea id="content" name="content" rows="6" required
+                class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500">{{ post.content }}</textarea>
+        </div>
+        
+        <!-- Event Date/Time -->
+        <div id="eventFields" class="grid gap-4 sm:grid-cols-2 {% if post.post_type != 'event' %}hidden{% endif %}">
+            <div>
+                <label for="event_date" class="block text-sm font-medium text-gray-300 mb-2">Event Date</label>
+                <input type="date" id="event_date" name="event_date"
+                    value="{{ post.event_date.strftime('%Y-%m-%d') if post.event_date else '' }}"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label for="event_time" class="block text-sm font-medium text-gray-300 mb-2">Event Time</label>
+                <input type="time" id="event_time" name="event_time"
+                    value="{{ post.event_time.strftime('%H:%M') if post.event_time else '' }}"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+            </div>
+        </div>
+        
+        <!-- Expiration -->
+        <div>
+            <label for="expires_at" class="block text-sm font-medium text-gray-300 mb-2">Expires At (optional)</label>
+            <input type="datetime-local" id="expires_at" name="expires_at"
+                value="{{ post.expires_at.strftime('%Y-%m-%dT%H:%M') if post.expires_at else '' }}"
+                class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+        </div>
+        
+        <!-- Options -->
+        <div class="flex flex-wrap gap-6">
+            <label class="flex items-center cursor-pointer">
+                <input type="checkbox" name="is_pinned" {% if post.is_pinned %}checked{% endif %}
+                    class="w-4 h-4 text-blue-500 bg-dark-600 border-dark-400 rounded focus:ring-blue-500">
+                <span class="ml-2 text-gray-300">📌 Pin to top</span>
+            </label>
+            
+            <label class="flex items-center cursor-pointer">
+                <input type="checkbox" name="is_active" {% if post.is_active %}checked{% endif %}
+                    class="w-4 h-4 text-blue-500 bg-dark-600 border-dark-400 rounded focus:ring-blue-500">
+                <span class="ml-2 text-gray-300">✓ Active</span>
+            </label>
+        </div>
+    </div>
+    
+    <div class="mt-6 flex gap-4">
+        <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+            Save Changes
+        </button>
+        <a href="{{ url_for('board.view', id=post.id) }}" class="px-6 py-2.5 bg-dark-600 hover:bg-dark-500 text-gray-200 font-medium rounded-lg transition-colors">
+            Cancel
+        </a>
+    </div>
+</form>
+
+<script>
+const postType = document.getElementById('post_type');
+const eventFields = document.getElementById('eventFields');
+
+function toggleEventFields() {
+    if (postType.value === 'event') {
+        eventFields.classList.remove('hidden');
+    } else {
+        eventFields.classList.add('hidden');
+    }
+}
+
+postType.addEventListener('change', toggleEventFields);
+</script>
+{% endblock %}

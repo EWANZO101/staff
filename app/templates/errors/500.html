@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="min-h-[60vh] flex items-center justify-center">
+    <div class="text-center">
+        <h1 class="text-9xl font-bold text-gray-700">500</h1>
+        <h2 class="text-2xl font-semibold text-white mt-4">Server Error</h2>
+        <p class="text-gray-400 mt-2 max-w-md mx-auto">
+            Sorry, something went wrong on our end. Please try again later or contact support if the problem persists.
+        </p>
+        <div class="mt-8 flex items-center justify-center space-x-4">
+            <a href="{{ url_for('main.dashboard') }}" 
+               class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                Go to Dashboard
+            </a>
+            <button onclick="location.reload()" 
+                    class="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors">
+                Try Again
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

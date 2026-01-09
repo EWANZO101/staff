@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-100">Welcome back, {{ current_user.first_name }}!</h1>
+            <p class="text-gray-400 mt-1">{{ today.strftime('%A, %d %B %Y') }}</p>
+        </div>
+        <div class="mt-4 md:mt-0 flex space-x-3">
+            <a href="{{ url_for('main.request_leave') }}" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-gray-200 rounded-lg transition-colors">
+                Request Leave
+            </a>
+            {% if current_user.has_permission('tasks.create') %}
+            <a href="{{ url_for('tasks.create') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                + New Task
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- This Week's Shifts -->
+        <div class="bg-dark-800 border border-dark-600 rounded-xl p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-400">This Week's Shifts</p>
+                    <p class="text-2xl font-bold text-gray-100 mt-1">{{ weekly_schedule|length }}</p>
+                </div>
+                <div class="p-3 bg-blue-500/20 rounded-lg">
+                    <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pending Tasks -->
+        <div class="bg-dark-800 border border-dark-600 rounded-xl p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-400">Pending Tasks</p>
+                    <p class="text-2xl font-bold text-gray-100 mt-1">{{ pending_tasks|length }}</p>
+                </div>
+                <div class="p-3 bg-purple-500/20 rounded-lg">
+                    <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pending Leave -->
+        <div class="bg-dark-800 border border-dark-600 rounded-xl p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-400">Pending Leave</p>
+                    <p class="text-2xl font-bold text-gray-100 mt-1">{{ pending_leave|length }}</p>
+                </div>
+                <div class="p-3 bg-yellow-500/20 rounded-lg">
+                    <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Unread Notifications -->
+        <div class="bg-dark-800 border border-dark-600 rounded-xl p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-400">Unread Notifications</p>
+                    <p class="text-2xl font-bold text-gray-100 mt-1">{{ current_user.get_unread_notifications_count() }}</p>
+                </div>
+                <div class="p-3 bg-red-500/20 rounded-lg">
+                    <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- This Week's Schedule -->
+        <div class="lg:col-span-2 bg-dark-800 border border-dark-600 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-100">This Week's Schedule</h2>
+                <a href="{{ url_for('main.schedule') }}" class="text-sm text-blue-400 hover:text-blue-300">View Full Calendar →</a>
+            </div>
+            
+            {% if weekly_schedule %}
+            <div class="space-y-3">
+                {% for schedule in weekly_schedule %}
+                <div class="flex items-center p-4 bg-dark-700 rounded-lg {% if schedule.date == today %}border-l-4 border-blue-500{% endif %}">
+                    <div class="flex-shrink-0 w-16 text-center">
+                        <p class="text-xs text-gray-400">{{ schedule.date.strftime('%a') }}</p>
+                        <p class="text-xl font-bold {% if schedule.date == today %}text-blue-400{% else %}text-gray-200{% endif %}">{{ schedule.date.day }}</p>
+                    </div>
+                    <div class="ml-4 flex-1">
+                        <p class="text-gray-200 font-medium">{{ schedule.start_time.strftime('%H:%M') }} - {{ schedule.end_time.strftime('%H:%M') }}</p>
+                        {% if schedule.notes %}
+                        <p class="text-sm text-gray-400 mt-1">{{ schedule.notes }}</p>
+                        {% endif %}
+                    </div>
+                    {% if schedule.date == today %}
+                    <span class="px-2 py-1 text-xs font-medium bg-blue-500/20 text-blue-400 rounded">Today</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <svg class="w-12 h-12 text-gray-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                <p class="mt-2 text-gray-400">No shifts scheduled this week</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Leave Balance -->
+        <div class="bg-dark-800 border border-dark-600 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-100">Leave Balance</h2>
+                <a href="{{ url_for('main.leave') }}" class="text-sm text-blue-400 hover:text-blue-300">Details →</a>
+            </div>
+            
+            {% if leave_allocations %}
+            <div class="space-y-4">
+                {% for alloc in leave_allocations %}
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm text-gray-300">{{ alloc.leave_type.name }}</span>
+                        <span class="text-sm text-gray-400">{{ alloc.remaining_days|int }}/{{ alloc.allocated_days|int }} days</span>
+                    </div>
+                    <div class="w-full bg-dark-600 rounded-full h-2">
+                        {% set percentage = (alloc.remaining_days / alloc.allocated_days * 100) if alloc.allocated_days > 0 else 0 %}
+                        <div class="h-2 rounded-full" style="width: {{ percentage }}%; background-color: {{ alloc.leave_type.color }}"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-400 text-center py-4">No leave allocations</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Pending Tasks -->
+        <div class="bg-dark-800 border border-dark-600 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-100">Your Tasks</h2>
+                <a href="{{ url_for('tasks.index') }}" class="text-sm text-blue-400 hover:text-blue-300">View All →</a>
+            </div>
+            
+            {% if pending_tasks %}
+            <div class="space-y-3">
+                {% for task in pending_tasks %}
+                <div class="p-4 bg-dark-700 rounded-lg border-l-4 priority-{{ task.priority }}">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <a href="{{ url_for('tasks.view', id=task.id) }}" class="text-gray-200 font-medium hover:text-blue-400">{{ task.title }}</a>
+                            {% if task.due_date %}
+                            <p class="text-sm mt-1 {% if task.is_overdue %}text-red-400{% else %}text-gray-400{% endif %}">
+                                Due: {{ task.due_date.strftime('%d/%m/%Y') }}
+                                {% if task.is_overdue %}<span class="ml-1">(Overdue)</span>{% endif %}
+                            </p>
+                            {% endif %}
+                        </div>
+                        <span class="px-2 py-1 text-xs font-medium rounded status-{{ task.status }}">
+                            {{ task.status|replace('_', ' ')|title }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <svg class="w-12 h-12 text-gray-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+                <p class="mt-2 text-gray-400">No pending tasks</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Recent Board Posts -->
+        <div class="bg-dark-800 border border-dark-600 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-100">Board Updates</h2>
+                <a href="{{ url_for('board.index') }}" class="text-sm text-blue-400 hover:text-blue-300">View All →</a>
+            </div>
+            
+            {% if recent_posts %}
+            <div class="space-y-3">
+                {% for post in recent_posts %}
+                <a href="{{ url_for('board.view', id=post.id) }}" class="block p-4 bg-dark-700 rounded-lg hover:bg-dark-600 transition-colors">
+                    <div class="flex items-start">
+                        <span class="text-lg mr-3">
+                            {% if post.post_type == 'event' %}📅
+                            {% elif post.post_type == 'task_needed' %}🙋
+                            {% elif post.post_type == 'operational' %}⚙️
+                            {% else %}📢{% endif %}
+                        </span>
+                        <div class="flex-1">
+                            <div class="flex items-center">
+                                {% if post.is_pinned %}
+                                <span class="text-yellow-400 mr-1">📌</span>
+                                {% endif %}
+                                <p class="text-gray-200 font-medium">{{ post.title }}</p>
+                            </div>
+                            <p class="text-sm text-gray-400 mt-1 line-clamp-2">{{ post.content[:100] }}{% if post.content|length > 100 %}...{% endif %}</p>
+                            <p class="text-xs text-gray-500 mt-2">{{ post.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <svg class="w-12 h-12 text-gray-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                </svg>
+                <p class="mt-2 text-gray-400">No recent posts</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Upcoming Leave -->
+    {% if upcoming_leave %}
+    <div class="bg-dark-800 border border-dark-600 rounded-xl p-6">
+        <h2 class="text-lg font-semibold text-gray-100 mb-4">Upcoming Approved Leave</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for leave in upcoming_leave %}
+            <div class="p-4 bg-dark-700 rounded-lg" style="border-left: 4px solid {{ leave.leave_type.color }}">
+                <p class="text-gray-200 font-medium">{{ leave.leave_type.name }}</p>
+                <p class="text-sm text-gray-400 mt-1">
+                    {{ leave.start_date.strftime('%d/%m/%Y') }} - {{ leave.end_date.strftime('%d/%m/%Y') }}
+                </p>
+                <span class="inline-block mt-2 px-2 py-1 text-xs font-medium bg-green-500/20 text-green-400 rounded">Approved</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

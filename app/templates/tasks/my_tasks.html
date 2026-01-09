@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}My Tasks - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-100">My Tasks</h1>
+    <p class="text-gray-400 mt-1">Tasks assigned to you</p>
+</div>
+
+<!-- Status Filter -->
+<div class="flex flex-wrap gap-2 mb-6">
+    <a href="{{ url_for('tasks.my_tasks', status='active') }}" 
+        class="px-4 py-2 rounded-lg font-medium transition-colors {% if current_status == 'active' %}bg-blue-500/20 text-blue-400 border border-blue-500/30{% else %}bg-dark-700 text-gray-400 hover:bg-dark-600{% endif %}">
+        Active
+    </a>
+    <a href="{{ url_for('tasks.my_tasks', status='pending') }}" 
+        class="px-4 py-2 rounded-lg font-medium transition-colors {% if current_status == 'pending' %}bg-yellow-500/20 text-yellow-400 border border-yellow-500/30{% else %}bg-dark-700 text-gray-400 hover:bg-dark-600{% endif %}">
+        Pending
+    </a>
+    <a href="{{ url_for('tasks.my_tasks', status='in_progress') }}" 
+        class="px-4 py-2 rounded-lg font-medium transition-colors {% if current_status == 'in_progress' %}bg-blue-500/20 text-blue-400 border border-blue-500/30{% else %}bg-dark-700 text-gray-400 hover:bg-dark-600{% endif %}">
+        In Progress
+    </a>
+    <a href="{{ url_for('tasks.my_tasks', status='completed') }}" 
+        class="px-4 py-2 rounded-lg font-medium transition-colors {% if current_status == 'completed' %}bg-green-500/20 text-green-400 border border-green-500/30{% else %}bg-dark-700 text-gray-400 hover:bg-dark-600{% endif %}">
+        Completed
+    </a>
+    <a href="{{ url_for('tasks.my_tasks', status='all') }}" 
+        class="px-4 py-2 rounded-lg font-medium transition-colors {% if current_status == 'all' %}bg-gray-500/20 text-gray-300 border border-gray-500/30{% else %}bg-dark-700 text-gray-400 hover:bg-dark-600{% endif %}">
+        All
+    </a>
+</div>
+
+<!-- Tasks List -->
+<div class="space-y-3">
+    {% for task in tasks %}
+    <div class="bg-dark-800 rounded-lg border border-dark-600 p-4 hover:border-dark-500 transition-colors border-l-4 priority-{{ task.priority }}">
+        <div class="flex items-start justify-between gap-4">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-2">
+                    <a href="{{ url_for('tasks.view', id=task.id) }}" class="text-lg font-semibold text-gray-100 hover:text-blue-400 truncate">
+                        {{ task.title }}
+                    </a>
+                    <span class="status-{{ task.status }} px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap">
+                        {{ task.status|replace('_', ' ')|title }}
+                    </span>
+                </div>
+                
+                {% if task.description %}
+                <p class="text-gray-400 text-sm mb-3 line-clamp-2">{{ task.description }}</p>
+                {% endif %}
+                
+                <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+                    {% if task.due_date %}
+                    <span class="flex items-center {% if task.is_overdue %}text-red-400{% endif %}">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        {{ task.due_date.strftime('%d/%m/%Y') }}
+                        {% if task.is_overdue %}<span class="text-xs ml-1">(Overdue)</span>{% endif %}
+                    </span>
+                    {% endif %}
+                    
+                    {% if task.category %}
+                    <span class="px-2 py-0.5 bg-dark-600 text-gray-300 rounded text-xs">{{ task.category }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="flex items-center gap-2">
+                {% if task.status != 'completed' %}
+                <form action="{{ url_for('tasks.update_status', id=task.id) }}" method="POST">
+                    <input type="hidden" name="status" value="{% if task.status == 'pending' %}in_progress{% else %}completed{% endif %}">
+                    <button type="submit" class="px-3 py-1.5 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded-lg text-sm transition-colors">
+                        {% if task.status == 'pending' %}Start{% else %}Complete{% endif %}
+                    </button>
+                </form>
+                {% endif %}
+                <a href="{{ url_for('tasks.view', id=task.id) }}" class="p-2 text-gray-400 hover:text-gray-200 hover:bg-dark-600 rounded-lg transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-12 bg-dark-800 rounded-lg border border-dark-600">
+        <svg class="w-12 h-12 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+        </svg>
+        <p class="text-gray-400">No tasks found</p>
+        <p class="text-gray-500 text-sm mt-1">You have no {{ current_status if current_status != 'all' else '' }} tasks assigned to you</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

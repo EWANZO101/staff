@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Board - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-100">Board</h1>
+        <p class="text-gray-400 mt-1">Announcements, events, and updates</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{{ url_for('board.events') }}" class="inline-flex items-center px-4 py-2 bg-dark-700 hover:bg-dark-600 text-gray-200 font-medium rounded-lg transition-colors">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            Events Calendar
+        </a>
+        {% if current_user.has_permission('board.create') %}
+        <a href="{{ url_for('board.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+            New Post
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-4">
+    <!-- Main Content -->
+    <div class="lg:col-span-3">
+        <!-- Type Filter -->
+        <div class="flex flex-wrap gap-2 mb-6">
+            <a href="{{ url_for('board.index', type='all') }}" 
+                class="px-4 py-2 rounded-lg font-medium transition-colors {% if current_type == 'all' %}bg-blue-500/20 text-blue-400 border border-blue-500/30{% else %}bg-dark-700 text-gray-400 hover:bg-dark-600{% endif %}">
+                All
+            </a>
+            {% for type_id, type_name, type_icon in post_types %}
+            <a href="{{ url_for('board.index', type=type_id) }}" 
+                class="px-4 py-2 rounded-lg font-medium transition-colors {% if current_type == type_id %}bg-blue-500/20 text-blue-400 border border-blue-500/30{% else %}bg-dark-700 text-gray-400 hover:bg-dark-600{% endif %}">
+                {{ type_icon }} {{ type_name }}
+            </a>
+            {% endfor %}
+        </div>
+        
+        <!-- Posts -->
+        <div class="space-y-4">
+            {% for post in posts.items %}
+            <div class="bg-dark-800 rounded-lg border border-dark-600 p-5 hover:border-dark-500 transition-colors {% if post.is_pinned %}border-l-4 border-l-yellow-500{% endif %}">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-2">
+                            {% if post.is_pinned %}
+                            <span class="text-yellow-500" title="Pinned">📌</span>
+                            {% endif %}
+                            
+                            {% for type_id, type_name, type_icon in post_types %}
+                                {% if post.post_type == type_id %}
+                                <span class="text-lg">{{ type_icon }}</span>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            <a href="{{ url_for('board.view', id=post.id) }}" class="text-lg font-semibold text-gray-100 hover:text-blue-400">
+                                {{ post.title }}
+                            </a>
+                            
+                            {% if post.priority == 'urgent' %}
+                            <span class="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-medium">Urgent</span>
+                            {% elif post.priority == 'high' %}
+                            <span class="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs font-medium">High</span>
+                            {% endif %}
+                        </div>
+                        
+                        <p class="text-gray-400 text-sm mb-3 line-clamp-2">{{ post.content }}</p>
+                        
+                        <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                            <span>Posted by {{ post.author.full_name if post.author else 'Unknown' }}</span>
+                            <span>{{ post.created_at.strftime('%d/%m/%Y') }}</span>
+                            
+                            {% if post.event_date %}
+                            <span class="flex items-center text-blue-400">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                {{ post.event_date.strftime('%d/%m/%Y') }}
+                                {% if post.event_time %} at {{ post.event_time.strftime('%H:%M') }}{% endif %}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if current_user.has_permission('board.edit') %}
+                    <div class="flex gap-1">
+                        {% if current_user.has_permission('board.pin') %}
+                        <form action="{{ url_for('board.toggle_pin', id=post.id) }}" method="POST">
+                            <button type="submit" class="p-2 text-gray-400 hover:text-yellow-400 hover:bg-dark-600 rounded-lg transition-colors" title="{% if post.is_pinned %}Unpin{% else %}Pin{% endif %}">
+                                <svg class="w-4 h-4" fill="{% if post.is_pinned %}currentColor{% else %}none{% endif %}" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                                </svg>
+                            </button>
+                        </form>
+                        {% endif %}
+                        <a href="{{ url_for('board.edit', id=post.id) }}" class="p-2 text-gray-400 hover:text-blue-400 hover:bg-dark-600 rounded-lg transition-colors" title="Edit">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-12 bg-dark-800 rounded-lg border border-dark-600">
+                <svg class="w-12 h-12 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                </svg>
+                <p class="text-gray-400">No posts found</p>
+                {% if current_user.has_permission('board.create') %}
+                <a href="{{ url_for('board.create') }}" class="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block">Create the first post</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if posts.pages > 1 %}
+        <div class="mt-6 flex items-center justify-between">
+            <p class="text-sm text-gray-400">
+                Showing {{ posts.items|length }} of {{ posts.total }} posts
+            </p>
+            <div class="flex gap-2">
+                {% if posts.has_prev %}
+                <a href="{{ url_for('board.index', type=current_type, page=posts.prev_num) }}" 
+                    class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-gray-300 rounded-lg">Previous</a>
+                {% endif %}
+                {% if posts.has_next %}
+                <a href="{{ url_for('board.index', type=current_type, page=posts.next_num) }}" 
+                    class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-gray-300 rounded-lg">Next</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Upcoming Events -->
+        <div class="bg-dark-800 rounded-lg border border-dark-600 p-5">
+            <h2 class="text-lg font-semibold text-gray-100 mb-4 flex items-center">
+                <span class="mr-2">📅</span> Upcoming Events
+            </h2>
+            {% if upcoming_events %}
+            <div class="space-y-3">
+                {% for event in upcoming_events %}
+                <a href="{{ url_for('board.view', id=event.id) }}" class="block p-3 bg-dark-700 rounded-lg hover:bg-dark-600 transition-colors">
+                    <p class="font-medium text-gray-200 text-sm">{{ event.title }}</p>
+                    <p class="text-xs text-blue-400 mt-1">
+                        {{ event.event_date.strftime('%d/%m/%Y') }}
+                        {% if event.event_time %} at {{ event.event_time.strftime('%H:%M') }}{% endif %}
+                    </p>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-sm">No upcoming events</p>
+            {% endif %}
+            
+            <a href="{{ url_for('board.events') }}" class="block text-center text-blue-400 hover:text-blue-300 text-sm mt-4">
+                View Calendar →
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

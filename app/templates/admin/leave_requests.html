@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Leave Requests - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-100">Leave Requests</h1>
+    <p class="text-gray-400 mt-1">Review and manage leave requests from staff</p>
+</div>
+
+<!-- Status Tabs -->
+<div class="flex flex-wrap gap-2 mb-6">
+    <a href="{{ url_for('admin.leave_requests', status='pending') }}" 
+        class="px-4 py-2 rounded-lg font-medium transition-colors {% if current_status == 'pending' %}bg-yellow-500/20 text-yellow-400 border border-yellow-500/30{% else %}bg-dark-700 text-gray-400 hover:bg-dark-600{% endif %}">
+        Pending
+        {% if counts.pending > 0 %}
+        <span class="ml-2 px-2 py-0.5 text-xs bg-yellow-500/30 rounded-full">{{ counts.pending }}</span>
+        {% endif %}
+    </a>
+    <a href="{{ url_for('admin.leave_requests', status='approved') }}" 
+        class="px-4 py-2 rounded-lg font-medium transition-colors {% if current_status == 'approved' %}bg-green-500/20 text-green-400 border border-green-500/30{% else %}bg-dark-700 text-gray-400 hover:bg-dark-600{% endif %}">
+        Approved
+        <span class="ml-2 px-2 py-0.5 text-xs bg-dark-600 rounded-full">{{ counts.approved }}</span>
+    </a>
+    <a href="{{ url_for('admin.leave_requests', status='rejected') }}" 
+        class="px-4 py-2 rounded-lg font-medium transition-colors {% if current_status == 'rejected' %}bg-red-500/20 text-red-400 border border-red-500/30{% else %}bg-dark-700 text-gray-400 hover:bg-dark-600{% endif %}">
+        Rejected
+        <span class="ml-2 px-2 py-0.5 text-xs bg-dark-600 rounded-full">{{ counts.rejected }}</span>
+    </a>
+    <a href="{{ url_for('admin.leave_requests', status='all') }}" 
+        class="px-4 py-2 rounded-lg font-medium transition-colors {% if current_status == 'all' %}bg-blue-500/20 text-blue-400 border border-blue-500/30{% else %}bg-dark-700 text-gray-400 hover:bg-dark-600{% endif %}">
+        All
+    </a>
+</div>
+
+<!-- Leave Requests Table -->
+<div class="bg-dark-800 rounded-lg border border-dark-600 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-dark-700">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Employee</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Leave Type</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Dates</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Days</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Reason</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Submitted</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-dark-600">
+                {% for req in requests.items %}
+                <tr class="hover:bg-dark-700/50">
+                    <td class="px-4 py-3">
+                        <div>
+                            <p class="font-medium text-gray-200">{{ req.user.full_name }}</p>
+                            <p class="text-xs text-gray-500">{{ req.user.email }}</p>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" 
+                            style="background-color: {{ req.leave_type.color }}20; color: {{ req.leave_type.color }}">
+                            {{ req.leave_type.name }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <p class="text-gray-200">{{ req.start_date.strftime('%d/%m/%Y') }}</p>
+                        {% if req.start_date != req.end_date %}
+                        <p class="text-xs text-gray-500">to {{ req.end_date.strftime('%d/%m/%Y') }}</p>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-gray-200">{{ req.days_count }}</td>
+                    <td class="px-4 py-3">
+                        <p class="text-gray-300 text-sm max-w-xs truncate" title="{{ req.reason or 'No reason provided' }}">
+                            {{ req.reason or 'No reason provided' }}
+                        </p>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="status-{{ req.status }} px-2.5 py-0.5 rounded-full text-xs font-medium">
+                            {{ req.status|title }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-400 text-sm">
+                        {{ req.created_at.strftime('%d/%m/%Y') }}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        {% if req.status == 'pending' %}
+                        <div class="flex justify-end gap-2">
+                            <button onclick="showApproveModal({{ req.id }}, '{{ req.user.full_name }}', '{{ req.leave_type.name }}', '{{ req.start_date.strftime('%d/%m/%Y') }}', '{{ req.end_date.strftime('%d/%m/%Y') }}')"
+                                class="p-2 text-green-400 hover:bg-green-500/20 rounded-lg transition-colors" title="Approve">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </button>
+                            <button onclick="showRejectModal({{ req.id }}, '{{ req.user.full_name }}')"
+                                class="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors" title="Reject">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        {% else %}
+                        <span class="text-gray-500 text-sm">
+                            {% if req.reviewed_by %}
+                            by {{ req.reviewer.first_name }}
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="px-4 py-12 text-center">
+                        <svg class="w-12 h-12 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                        <p class="text-gray-400">No {{ current_status if current_status != 'all' else '' }} leave requests found</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if requests.pages > 1 %}
+    <div class="px-4 py-3 border-t border-dark-600 flex items-center justify-between">
+        <p class="text-sm text-gray-400">
+            Showing {{ requests.items|length }} of {{ requests.total }} requests
+        </p>
+        <div class="flex gap-2">
+            {% if requests.has_prev %}
+            <a href="{{ url_for('admin.leave_requests', status=current_status, page=requests.prev_num) }}" class="px-3 py-1 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded">Previous</a>
+            {% endif %}
+            {% if requests.has_next %}
+            <a href="{{ url_for('admin.leave_requests', status=current_status, page=requests.next_num) }}" class="px-3 py-1 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Approve Modal -->
+<div id="approveModal" class="fixed inset-0 z-50 hidden">
+    <div class="fixed inset-0 bg-black/70" onclick="closeModal('approveModal')"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-dark-800 rounded-lg border border-dark-600 w-full max-w-md p-6">
+            <h3 class="text-lg font-semibold text-gray-100 mb-4">Approve Leave Request</h3>
+            <p id="approveDetails" class="text-gray-400 mb-4"></p>
+            <form id="approveForm" method="POST">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Notes (optional)</label>
+                    <textarea name="notes" rows="3" class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500" placeholder="Add any notes..."></textarea>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeModal('approveModal')" class="px-4 py-2 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">Approve</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="fixed inset-0 z-50 hidden">
+    <div class="fixed inset-0 bg-black/70" onclick="closeModal('rejectModal')"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-dark-800 rounded-lg border border-dark-600 w-full max-w-md p-6">
+            <h3 class="text-lg font-semibold text-gray-100 mb-4">Reject Leave Request</h3>
+            <p id="rejectDetails" class="text-gray-400 mb-4"></p>
+            <form id="rejectForm" method="POST">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Reason for rejection</label>
+                    <textarea name="notes" rows="3" class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500" placeholder="Provide a reason..." required></textarea>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeModal('rejectModal')" class="px-4 py-2 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg">Reject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function showApproveModal(id, name, type, start, end) {
+    document.getElementById('approveDetails').textContent = `Approve ${type} for ${name} from ${start} to ${end}?`;
+    document.getElementById('approveForm').action = `/admin/leave/${id}/approve`;
+    document.getElementById('approveModal').classList.remove('hidden');
+}
+
+function showRejectModal(id, name) {
+    document.getElementById('rejectDetails').textContent = `Reject leave request for ${name}?`;
+    document.getElementById('rejectForm').action = `/admin/leave/${id}/reject`;
+    document.getElementById('rejectModal').classList.remove('hidden');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-white">Reports</h1>
+    <p class="text-gray-400 mt-1">View attendance and leave summary reports</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Attendance Report -->
+    <a href="{{ url_for('management.attendance_report') }}" 
+       class="block bg-gray-800 rounded-lg border border-gray-700 p-6 hover:border-blue-500 transition-colors group">
+        <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-blue-900/50 rounded-lg">
+                <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                </svg>
+            </div>
+            <svg class="w-5 h-5 text-gray-500 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-white mb-2">Attendance Report</h3>
+        <p class="text-gray-400 text-sm">View scheduled days and leave taken for each staff member by month.</p>
+    </a>
+    
+    <!-- Leave Summary Report -->
+    <a href="{{ url_for('management.leave_summary_report') }}" 
+       class="block bg-gray-800 rounded-lg border border-gray-700 p-6 hover:border-green-500 transition-colors group">
+        <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-green-900/50 rounded-lg">
+                <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+            </div>
+            <svg class="w-5 h-5 text-gray-500 group-hover:text-green-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-white mb-2">Leave Summary</h3>
+        <p class="text-gray-400 text-sm">View leave allocations, usage, and remaining balances for all staff.</p>
+    </a>
+    
+    <!-- Audit Log -->
+    <a href="{{ url_for('management.audit_log') }}" 
+       class="block bg-gray-800 rounded-lg border border-gray-700 p-6 hover:border-purple-500 transition-colors group">
+        <div class="flex items-center justify-between mb-4">
+            <div class="p-3 bg-purple-900/50 rounded-lg">
+                <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <svg class="w-5 h-5 text-gray-500 group-hover:text-purple-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-white mb-2">Audit Log</h3>
+        <p class="text-gray-400 text-sm">View system activity and changes made by users.</p>
+    </a>
+</div>
+{% endblock %}

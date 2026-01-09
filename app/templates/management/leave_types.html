@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Leave Types - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Leave Types</h1>
+            <p class="text-gray-400 mt-1">Configure available leave categories</p>
+        </div>
+        <button onclick="document.getElementById('addModal').classList.remove('hidden')" 
+                class="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add Leave Type
+        </button>
+    </div>
+</div>
+
+<!-- Leave Types Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for lt in types %}
+    <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+        <div class="h-2" style="background-color: {{ lt.color }}"></div>
+        <div class="p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-semibold text-white">{{ lt.name }}</h3>
+                <div class="flex items-center space-x-2">
+                    {% if lt.is_paid %}
+                    <span class="px-2 py-1 text-xs bg-green-900 text-green-300 rounded">Paid</span>
+                    {% else %}
+                    <span class="px-2 py-1 text-xs bg-gray-700 text-gray-400 rounded">Unpaid</span>
+                    {% endif %}
+                    {% if not lt.is_active %}
+                    <span class="px-2 py-1 text-xs bg-red-900 text-red-300 rounded">Inactive</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <p class="text-gray-400 text-sm mb-4">{{ lt.description or 'No description' }}</p>
+            
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <span class="w-4 h-4 rounded" style="background-color: {{ lt.color }}"></span>
+                    <span class="text-xs text-gray-500">{{ lt.color }}</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="openEditModal({{ lt.id }}, '{{ lt.name }}', '{{ lt.description or '' }}', {{ 'true' if lt.is_paid else 'false' }}, '{{ lt.color }}', {{ 'true' if lt.is_active else 'false' }})"
+                            class="text-blue-400 hover:text-blue-300 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </button>
+                    <form action="{{ url_for('management.delete_leave_type', id=lt.id) }}" method="POST" class="inline"
+                          onsubmit="return confirm('Delete this leave type?');">
+                        <button type="submit" class="text-red-400 hover:text-red-300 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-span-full bg-gray-800 rounded-lg border border-gray-700 p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <h3 class="mt-4 text-lg font-medium text-gray-300">No leave types configured</h3>
+        <p class="mt-2 text-gray-500">Add leave types to allow staff to request time off.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Add Modal -->
+<div id="addModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black bg-opacity-50" onclick="document.getElementById('addModal').classList.add('hidden')"></div>
+        
+        <div class="relative bg-gray-800 rounded-lg shadow-xl max-w-md w-full border border-gray-700">
+            <div class="flex items-center justify-between p-4 border-b border-gray-700">
+                <h3 class="text-lg font-semibold text-white">Add Leave Type</h3>
+                <button onclick="document.getElementById('addModal').classList.add('hidden')" 
+                        class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <form action="{{ url_for('management.add_leave_type') }}" method="POST" class="p-4">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                        <input type="text" name="name" required placeholder="e.g., Annual Leave"
+                               class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                        <textarea name="description" rows="2" placeholder="Optional description"
+                                  class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Color</label>
+                        <div class="flex items-center space-x-3">
+                            <input type="color" name="color" value="#3B82F6"
+                                   class="h-10 w-14 bg-gray-700 border border-gray-600 rounded cursor-pointer">
+                            <span class="text-gray-400 text-sm">Choose a color for calendar display</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <input type="checkbox" name="is_paid" id="add_is_paid" checked
+                               class="w-4 h-4 bg-gray-700 border-gray-600 rounded text-blue-600 focus:ring-blue-500">
+                        <label for="add_is_paid" class="ml-2 text-sm text-gray-300">Paid leave</label>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="document.getElementById('addModal').classList.add('hidden')"
+                            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                        Add Leave Type
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black bg-opacity-50" onclick="document.getElementById('editModal').classList.add('hidden')"></div>
+        
+        <div class="relative bg-gray-800 rounded-lg shadow-xl max-w-md w-full border border-gray-700">
+            <div class="flex items-center justify-between p-4 border-b border-gray-700">
+                <h3 class="text-lg font-semibold text-white">Edit Leave Type</h3>
+                <button onclick="document.getElementById('editModal').classList.add('hidden')" 
+                        class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="editForm" method="POST" class="p-4">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                        <input type="text" name="name" id="edit_name" required
+                               class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                        <textarea name="description" id="edit_description" rows="2"
+                                  class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Color</label>
+                        <input type="color" name="color" id="edit_color"
+                               class="h-10 w-14 bg-gray-700 border border-gray-600 rounded cursor-pointer">
+                    </div>
+                    
+                    <div class="flex items-center space-x-6">
+                        <div class="flex items-center">
+                            <input type="checkbox" name="is_paid" id="edit_is_paid"
+                                   class="w-4 h-4 bg-gray-700 border-gray-600 rounded text-blue-600 focus:ring-blue-500">
+                            <label for="edit_is_paid" class="ml-2 text-sm text-gray-300">Paid leave</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" name="is_active" id="edit_is_active"
+                                   class="w-4 h-4 bg-gray-700 border-gray-600 rounded text-blue-600 focus:ring-blue-500">
+                            <label for="edit_is_active" class="ml-2 text-sm text-gray-300">Active</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="document.getElementById('editModal').classList.add('hidden')"
+                            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openEditModal(id, name, description, isPaid, color, isActive) {
+    document.getElementById('editForm').action = `/management/leave-types/${id}/edit`;
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_description').value = description;
+    document.getElementById('edit_is_paid').checked = isPaid;
+    document.getElementById('edit_color').value = color;
+    document.getElementById('edit_is_active').checked = isActive;
+    document.getElementById('editModal').classList.remove('hidden');
+}
+</script>
+{% endblock %}

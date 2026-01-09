@@ -1,0 +1,23 @@
+# Staff Scheduling System - Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core Flask
+Flask>=3.0.0
+Flask-SQLAlchemy>=3.1.0
+Flask-Login>=0.6.3
+Flask-Migrate>=4.0.0
+Flask-WTF>=1.2.0
+
+# Security
+Flask-Bcrypt>=1.0.1
+python-dotenv>=1.0.0
+
+# Validation
+email-validator>=2.0.0
+
+# Database (optional - for MySQL/PostgreSQL production)
+# PyMySQL>=1.1.0  # Uncomment for MySQL
+# psycopg2-binary>=2.9.9  # Uncomment for PostgreSQL
+
+# Production server (optional)
+# gunicorn>=21.0.0  # Uncomment for production deployment

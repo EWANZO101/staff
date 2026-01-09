@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Create Role - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('admin.roles') }}" class="inline-flex items-center text-gray-400 hover:text-gray-200 mb-4">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        Back to Roles
+    </a>
+    <h1 class="text-2xl font-bold text-gray-100">Create New Role</h1>
+    <p class="text-gray-400 mt-1">Define a new role with specific permissions</p>
+</div>
+
+<form method="POST" class="max-w-4xl">
+    <div class="bg-dark-800 rounded-lg border border-dark-600 p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-100 mb-4">Role Details</h2>
+        
+        <div class="grid gap-4 md:grid-cols-2">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-300 mb-2">Role Name *</label>
+                <input type="text" id="name" name="name" required
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                    placeholder="e.g., Supervisor">
+            </div>
+            
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                <input type="text" id="description" name="description"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                    placeholder="Brief description of this role">
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-dark-800 rounded-lg border border-dark-600 p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-100 mb-4">Permissions</h2>
+        <p class="text-sm text-gray-400 mb-4">Select the permissions this role should have</p>
+        
+        <div class="space-y-6">
+            {% for category, perms in perm_categories.items() %}
+            <div class="border border-dark-600 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-medium text-gray-200">{{ category }}</h3>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" class="category-toggle sr-only" data-category="{{ category }}">
+                        <span class="text-xs text-blue-400 hover:text-blue-300">Toggle All</span>
+                    </label>
+                </div>
+                
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {% for perm in perms %}
+                    <label class="flex items-start p-3 bg-dark-700 rounded-lg cursor-pointer hover:bg-dark-600 transition-colors">
+                        <input type="checkbox" name="permissions" value="{{ perm.id }}" 
+                            data-category="{{ category }}"
+                            class="mt-0.5 w-4 h-4 text-blue-500 bg-dark-600 border-dark-400 rounded focus:ring-blue-500 focus:ring-offset-dark-700">
+                        <div class="ml-3">
+                            <span class="text-sm font-medium text-gray-200">{{ perm.name.split('.')[-1]|title|replace('_', ' ') }}</span>
+                            <p class="text-xs text-gray-500">{{ perm.description or perm.name }}</p>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="flex gap-4">
+        <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+            Create Role
+        </button>
+        <a href="{{ url_for('admin.roles') }}" class="px-6 py-2.5 bg-dark-600 hover:bg-dark-500 text-gray-200 font-medium rounded-lg transition-colors">
+            Cancel
+        </a>
+    </div>
+</form>
+
+<script>
+document.querySelectorAll('.category-toggle').forEach(toggle => {
+    toggle.addEventListener('change', function() {
+        const category = this.dataset.category;
+        const checkboxes = document.querySelectorAll(`input[data-category="${category}"]`);
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => cb.checked = !allChecked);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Log - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex items-center space-x-2 text-sm text-gray-400 mb-2">
+        <a href="{{ url_for('management.reports') }}" class="hover:text-white">Reports</a>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+        <span class="text-gray-300">Audit Log</span>
+    </div>
+    <h1 class="text-2xl font-bold text-white">Audit Log</h1>
+    <p class="text-gray-400 mt-1">System activity and changes</p>
+</div>
+
+<!-- Audit Log Table -->
+<div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+    {% if logs.items %}
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-900 border-b border-gray-700">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Timestamp</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">User</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Action</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Entity</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Details</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-700">
+                {% for log in logs.items %}
+                <tr class="hover:bg-gray-750">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="text-gray-300 text-sm">{{ log.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if log.user %}
+                        <span class="text-white">{{ log.user.first_name }} {{ log.user.last_name }}</span>
+                        {% else %}
+                        <span class="text-gray-500">System</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if log.action == 'create' %}
+                        <span class="px-2 py-1 text-xs bg-green-900 text-green-300 rounded">Created</span>
+                        {% elif log.action == 'update' %}
+                        <span class="px-2 py-1 text-xs bg-blue-900 text-blue-300 rounded">Updated</span>
+                        {% elif log.action == 'delete' %}
+                        <span class="px-2 py-1 text-xs bg-red-900 text-red-300 rounded">Deleted</span>
+                        {% elif log.action == 'login' %}
+                        <span class="px-2 py-1 text-xs bg-purple-900 text-purple-300 rounded">Login</span>
+                        {% elif log.action == 'logout' %}
+                        <span class="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded">Logout</span>
+                        {% else %}
+                        <span class="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded">{{ log.action }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="text-gray-300">{{ log.entity_type or '-' }}</span>
+                        {% if log.entity_id %}
+                        <span class="text-gray-500 text-sm">#{{ log.entity_id }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-gray-400 text-sm">{{ log.details or '-' }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if logs.pages > 1 %}
+    <div class="px-6 py-4 border-t border-gray-700 flex items-center justify-between">
+        <p class="text-sm text-gray-400">
+            Showing {{ ((logs.page - 1) * logs.per_page) + 1 }} to {{ ((logs.page - 1) * logs.per_page) + logs.items|length }} of {{ logs.total }} entries
+        </p>
+        <div class="flex items-center space-x-2">
+            {% if logs.has_prev %}
+            <a href="{{ url_for('management.audit_log', page=logs.prev_num) }}" 
+               class="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors">
+                Previous
+            </a>
+            {% endif %}
+            
+            <span class="text-gray-400">Page {{ logs.page }} of {{ logs.pages }}</span>
+            
+            {% if logs.has_next %}
+            <a href="{{ url_for('management.audit_log', page=logs.next_num) }}" 
+               class="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors">
+                Next
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <h3 class="mt-4 text-lg font-medium text-gray-300">No audit log entries</h3>
+        <p class="mt-2 text-gray-500">System activities will appear here.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Schedules - Admin - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-100">Schedule Management</h1>
+            <p class="text-gray-400 mt-1">Assign and manage work schedules for all users</p>
+        </div>
+        <a href="{{ url_for('admin.bulk_assign_schedule') }}" class="mt-4 md:mt-0 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            Bulk Assign
+        </a>
+    </div>
+    
+    <!-- Month Navigation -->
+    <div class="bg-dark-800 border border-dark-600 rounded-xl p-4">
+        <div class="flex items-center justify-between">
+            <a href="{{ url_for('admin.schedules', year=prev_year, month=prev_month) }}" class="p-2 hover:bg-dark-600 rounded-lg transition-colors">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </a>
+            <h2 class="text-xl font-semibold text-gray-100">{{ month_name }} {{ year }}</h2>
+            <a href="{{ url_for('admin.schedules', year=next_year, month=next_month) }}" class="p-2 hover:bg-dark-600 rounded-lg transition-colors">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Schedule Grid -->
+    <div class="bg-dark-800 border border-dark-600 rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-dark-700">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-400 sticky left-0 bg-dark-700 z-10 min-w-48">User</th>
+                        {% for day in days %}
+                        <th class="px-2 py-3 text-center text-sm font-medium text-gray-400 min-w-20">
+                            <div>{{ day.strftime('%a') }}</div>
+                            <div class="text-xs">{{ day.day }}</div>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-600">
+                    {% for user in users %}
+                    <tr class="hover:bg-dark-700/30">
+                        <td class="px-4 py-3 sticky left-0 bg-dark-800 z-10">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-dark-600 rounded-full flex items-center justify-center text-sm">
+                                    {{ user.first_name[0] }}{{ user.last_name[0] }}
+                                </div>
+                                <span class="ml-2 text-gray-200 text-sm">{{ user.full_name }}</span>
+                            </div>
+                        </td>
+                        {% for day in days %}
+                        {% set schedule = schedule_dict.get((user.id, day)) %}
+                        <td class="px-1 py-2 text-center">
+                            {% if schedule %}
+                            <button onclick="editSchedule({{ user.id }}, '{{ day }}', '{{ schedule.start_time.strftime('%H:%M') }}', '{{ schedule.end_time.strftime('%H:%M') }}', '{{ schedule.notes or '' }}')"
+                                    class="w-full px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded hover:bg-blue-500/30 transition-colors">
+                                {{ schedule.start_time.strftime('%H:%M') }}-{{ schedule.end_time.strftime('%H:%M') }}
+                            </button>
+                            {% else %}
+                            <button onclick="addSchedule({{ user.id }}, '{{ day }}')"
+                                    class="w-full px-2 py-1 bg-dark-600 text-gray-500 text-xs rounded hover:bg-dark-500 hover:text-gray-300 transition-colors">
+                                +
+                            </button>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="{{ days|length + 1 }}" class="px-4 py-8 text-center text-gray-400">
+                            No active users found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Modal -->
+<div id="scheduleModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center">
+    <div class="bg-dark-800 border border-dark-600 rounded-xl p-6 w-full max-w-md mx-4">
+        <h3 class="text-lg font-semibold text-gray-100 mb-4" id="modalTitle">Assign Schedule</h3>
+        
+        <form method="POST" action="{{ url_for('admin.assign_schedule') }}" class="space-y-4">
+            <input type="hidden" name="user_id" id="scheduleUserId">
+            <input type="hidden" name="date" id="scheduleDate">
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Start Time</label>
+                    <input type="time" name="start_time" id="startTime" required
+                           class="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">End Time</label>
+                    <input type="time" name="end_time" id="endTime" required
+                           class="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Notes (Optional)</label>
+                <input type="text" name="notes" id="scheduleNotes"
+                       class="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                    Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+const modal = document.getElementById('scheduleModal');
+
+function addSchedule(userId, date) {
+    document.getElementById('modalTitle').textContent = 'Assign Schedule';
+    document.getElementById('scheduleUserId').value = userId;
+    document.getElementById('scheduleDate').value = date;
+    document.getElementById('startTime').value = '09:00';
+    document.getElementById('endTime').value = '17:00';
+    document.getElementById('scheduleNotes').value = '';
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function editSchedule(userId, date, startTime, endTime, notes) {
+    document.getElementById('modalTitle').textContent = 'Edit Schedule';
+    document.getElementById('scheduleUserId').value = userId;
+    document.getElementById('scheduleDate').value = date;
+    document.getElementById('startTime').value = startTime;
+    document.getElementById('endTime').value = endTime;
+    document.getElementById('scheduleNotes').value = notes;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeModal() {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+modal.addEventListener('click', function(e) {
+    if (e.target === modal) closeModal();
+});
+</script>
+{% endblock %}
+{% endblock %}

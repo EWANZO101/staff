@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Users - Admin - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-100">User Management</h1>
+            <p class="text-gray-400 mt-1">Manage system users and their access</p>
+        </div>
+        {% if current_user.has_permission('users.create') %}
+        <a href="{{ url_for('admin.create_user') }}" class="mt-4 md:mt-0 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add User
+        </a>
+        {% endif %}
+    </div>
+    
+    <!-- Search -->
+    <div class="bg-dark-800 border border-dark-600 rounded-xl p-4">
+        <form method="GET" action="{{ url_for('admin.users') }}" class="flex gap-4">
+            <div class="flex-1">
+                <input type="text" name="search" value="{{ search }}" 
+                       placeholder="Search users by name or email..."
+                       class="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <button type="submit" class="px-4 py-2 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded-lg transition-colors">
+                Search
+            </button>
+        </form>
+    </div>
+    
+    <!-- Users List -->
+    <div class="bg-dark-800 border border-dark-600 rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-dark-700">
+                    <tr class="text-left text-sm text-gray-400">
+                        <th class="px-6 py-4 font-medium">User</th>
+                        <th class="px-6 py-4 font-medium">Email</th>
+                        <th class="px-6 py-4 font-medium">Department</th>
+                        <th class="px-6 py-4 font-medium">Roles</th>
+                        <th class="px-6 py-4 font-medium">Status</th>
+                        <th class="px-6 py-4 font-medium">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-600">
+                    {% for user in users.items %}
+                    <tr class="hover:bg-dark-700/50">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-dark-600 rounded-full flex items-center justify-center">
+                                    <span class="text-gray-300 font-medium">{{ user.first_name[0] }}{{ user.last_name[0] }}</span>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-gray-200 font-medium">{{ user.full_name }}</p>
+                                    {% if user.is_first_account %}
+                                    <span class="text-xs text-yellow-400">Super Admin</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-gray-300">{{ user.email }}</td>
+                        <td class="px-6 py-4 text-gray-400">{{ user.department or '-' }}</td>
+                        <td class="px-6 py-4">
+                            <div class="flex flex-wrap gap-1">
+                                {% for role in user.roles %}
+                                <span class="px-2 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded">{{ role.name }}</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if user.is_active %}
+                            <span class="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded">Active</span>
+                            {% else %}
+                            <span class="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center space-x-2">
+                                {% if current_user.has_permission('users.edit') %}
+                                <a href="{{ url_for('admin.edit_user', id=user.id) }}" class="p-2 text-gray-400 hover:text-gray-200 hover:bg-dark-600 rounded transition-colors" title="Edit">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </a>
+                                {% endif %}
+                                {% if current_user.has_permission('users.delete') and not user.is_first_account and user.id != current_user.id %}
+                                <form method="POST" action="{{ url_for('admin.delete_user', id=user.id) }}" class="inline">
+                                    <button type="submit" onclick="return confirm('Deactivate this user?')" class="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors" title="Deactivate">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-400">No users found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if users.pages > 1 %}
+        <div class="px-6 py-4 bg-dark-700 flex justify-between items-center">
+            <span class="text-sm text-gray-400">
+                Showing {{ users.items|length }} of {{ users.total }} users
+            </span>
+            <div class="flex space-x-2">
+                {% if users.has_prev %}
+                <a href="{{ url_for('admin.users', page=users.prev_num, search=search) }}" class="px-3 py-1 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded">Prev</a>
+                {% endif %}
+                {% if users.has_next %}
+                <a href="{{ url_for('admin.users', page=users.next_num, search=search) }}" class="px-3 py-1 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded">Next</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

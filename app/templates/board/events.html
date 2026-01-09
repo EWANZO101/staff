@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Events Calendar - Staff Scheduler{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Events Calendar</h1>
+            <p class="text-gray-400 mt-1">View upcoming events and important dates</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <a href="{{ url_for('board.index') }}" 
+               class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors">
+                View Board
+            </a>
+            {% if current_user.has_permission('board.manage') %}
+            <a href="{{ url_for('board.create') }}" 
+               class="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Event
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Month Navigation -->
+<div class="flex items-center justify-center mb-6">
+    {% set prev_month = month - 1 if month > 1 else 12 %}
+    {% set prev_year = year if month > 1 else year - 1 %}
+    {% set next_month = month + 1 if month < 12 else 1 %}
+    {% set next_year = year if month < 12 else year + 1 %}
+    
+    <a href="{{ url_for('board.events', year=prev_year, month=prev_month) }}" 
+       class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+        <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+    </a>
+    <span class="mx-6 text-xl font-semibold text-white">{{ month_name }} {{ year }}</span>
+    <a href="{{ url_for('board.events', year=next_year, month=next_month) }}" 
+       class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+        <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
+</div>
+
+<!-- Calendar Grid -->
+<div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+    <!-- Day Headers -->
+    <div class="grid grid-cols-7 bg-gray-900 border-b border-gray-700">
+        {% for day in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+        <div class="px-4 py-3 text-center text-sm font-medium text-gray-400">{{ day }}</div>
+        {% endfor %}
+    </div>
+    
+    <!-- Calendar Days -->
+    <div class="grid grid-cols-7">
+        {% for week in calendar %}
+        {% for day in week %}
+        <div class="min-h-[120px] border-b border-r border-gray-700 p-2 {% if day.month != month %}bg-gray-850{% endif %}">
+            {% if day %}
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm {% if day.is_today %}bg-blue-600 text-white px-2 py-0.5 rounded{% elif day.month != month %}text-gray-600{% else %}text-gray-300{% endif %}">
+                    {{ day.day }}
+                </span>
+            </div>
+            
+            <!-- Events for this day -->
+            <div class="space-y-1">
+                {% for event in day.events %}
+                <a href="{{ url_for('board.view', id=event.id) }}" 
+                   class="block px-2 py-1 text-xs rounded truncate transition-colors
+                          {% if event.post_type == 'event' %}bg-purple-900/50 text-purple-300 hover:bg-purple-900
+                          {% elif event.post_type == 'announcement' %}bg-blue-900/50 text-blue-300 hover:bg-blue-900
+                          {% elif event.post_type == 'task' %}bg-yellow-900/50 text-yellow-300 hover:bg-yellow-900
+                          {% else %}bg-gray-700 text-gray-300 hover:bg-gray-600{% endif %}">
+                    {% if event.event_time %}{{ event.event_time.strftime('%H:%M') }} - {% endif %}{{ event.title }}
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Upcoming Events List -->
+{% if upcoming_events %}
+<div class="mt-6">
+    <h2 class="text-lg font-semibold text-white mb-4">Upcoming Events</h2>
+    <div class="space-y-3">
+        {% for event in upcoming_events %}
+        <a href="{{ url_for('board.view', id=event.id) }}" 
+           class="block bg-gray-800 rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors">
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2 py-1 text-xs rounded 
+                                     {% if event.post_type == 'event' %}bg-purple-900 text-purple-300
+                                     {% elif event.post_type == 'announcement' %}bg-blue-900 text-blue-300
+                                     {% elif event.post_type == 'task' %}bg-yellow-900 text-yellow-300
+                                     {% else %}bg-gray-700 text-gray-300{% endif %}">
+                            {{ event.post_type|capitalize }}
+                        </span>
+                        {% if event.is_pinned %}
+                        <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"/>
+                        </svg>
+                        {% endif %}
+                    </div>
+                    <h3 class="text-white font-medium mt-2">{{ event.title }}</h3>
+                    {% if event.content %}
+                    <p class="text-gray-400 text-sm mt-1 line-clamp-2">{{ event.content }}</p>
+                    {% endif %}
+                </div>
+                <div class="text-right">
+                    <p class="text-gray-300">{{ event.event_date.strftime('%d %b') }}</p>
+                    {% if event.event_time %}
+                    <p class="text-gray-500 text-sm">{{ event.event_time.strftime('%H:%M') }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
