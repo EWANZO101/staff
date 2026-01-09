@@ -1,10 +1,44 @@
 """
 Database Models for Staff Scheduling System
 """
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from app import db, login_manager
+
+
+class SiteSettings(db.Model):
+    """Site-wide settings"""
+    __tablename__ = 'site_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), unique=True, nullable=False)
+    value = db.Column(db.Text)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    @staticmethod
+    def get(key, default=None):
+        """Get a setting value by key"""
+        setting = SiteSettings.query.filter_by(key=key).first()
+        return setting.value if setting else default
+    
+    @staticmethod
+    def set(key, value):
+        """Set a setting value"""
+        setting = SiteSettings.query.filter_by(key=key).first()
+        if setting:
+            setting.value = value
+        else:
+            setting = SiteSettings(key=key, value=value)
+            db.session.add(setting)
+        db.session.commit()
+        return setting
+    
+    @staticmethod
+    def get_all():
+        """Get all settings as a dictionary"""
+        settings = SiteSettings.query.all()
+        return {s.key: s.value for s in settings}
 
 
 # Association tables for many-to-many relationships
@@ -655,3 +689,58 @@ class PayrollRecord(db.Model):
     
     employee = db.relationship('User', foreign_keys=[user_id], backref='payroll_records')
     creator = db.relationship('User', foreign_keys=[created_by], backref='payroll_created')
+
+
+class Subscription(db.Model):
+    """Recurring subscriptions and services"""
+    __tablename__ = 'subscriptions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.String(500))
+    vendor = db.Column(db.String(200))
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    currency = db.Column(db.String(3), default='USD')
+    billing_cycle = db.Column(db.String(20), default='monthly')  # monthly, quarterly, yearly, weekly
+    category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
+    start_date = db.Column(db.Date, nullable=False)
+    next_billing_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)  # NULL = ongoing
+    is_active = db.Column(db.Boolean, default=True)
+    auto_renew = db.Column(db.Boolean, default=True)
+    payment_method = db.Column(db.String(100))
+    account_info = db.Column(db.String(200))  # Last 4 digits, account name, etc.
+    website_url = db.Column(db.String(500))
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    category = db.relationship('ExpenseCategory', backref='subscriptions')
+    creator = db.relationship('User', backref='subscriptions_created')
+    
+    @property
+    def monthly_cost(self):
+        """Calculate monthly cost regardless of billing cycle"""
+        amount = float(self.amount)
+        if self.billing_cycle == 'weekly':
+            return amount * 4.33  # Average weeks per month
+        elif self.billing_cycle == 'monthly':
+            return amount
+        elif self.billing_cycle == 'quarterly':
+            return amount / 3
+        elif self.billing_cycle == 'yearly':
+            return amount / 12
+        return amount
+    
+    @property
+    def yearly_cost(self):
+        """Calculate yearly cost"""
+        return self.monthly_cost * 12
+    
+    @property
+    def is_due_soon(self):
+        """Check if subscription is due within 7 days"""
+        if not self.next_billing_date:
+            return False
+        return self.next_billing_date <= date.today() + timedelta(days=7)

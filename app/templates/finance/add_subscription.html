@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Add Subscription - Mystic Shores{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('finance.subscriptions') }}" class="inline-flex items-center text-gray-400 hover:text-gray-200 mb-4">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        Back to Subscriptions
+    </a>
+    <h1 class="text-2xl font-bold text-gray-100">Add Subscription</h1>
+    <p class="text-gray-400 mt-1">Track a new recurring payment</p>
+</div>
+
+<form method="POST" class="max-w-2xl">
+    <div class="bg-dark-800 rounded-xl border border-dark-600 p-6 space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-300 mb-2">Subscription Name *</label>
+                <input type="text" id="name" name="name" required
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
+                    placeholder="e.g., Netflix, Spotify, AWS">
+            </div>
+            
+            <div>
+                <label for="vendor" class="block text-sm font-medium text-gray-300 mb-2">Vendor / Provider</label>
+                <input type="text" id="vendor" name="vendor"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
+                    placeholder="Company name">
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label for="amount" class="block text-sm font-medium text-gray-300 mb-2">Amount (USD) *</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <input type="number" id="amount" name="amount" step="0.01" min="0.01" required
+                        class="w-full pl-8 pr-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
+                        placeholder="0.00">
+                </div>
+            </div>
+            
+            <div>
+                <label for="billing_cycle" class="block text-sm font-medium text-gray-300 mb-2">Billing Cycle *</label>
+                <select id="billing_cycle" name="billing_cycle" required
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="weekly">Weekly</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label for="category_id" class="block text-sm font-medium text-gray-300 mb-2">Category</label>
+                <select id="category_id" name="category_id"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+                    <option value="">Select category</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label for="start_date" class="block text-sm font-medium text-gray-300 mb-2">Start Date *</label>
+                <input type="date" id="start_date" name="start_date" required
+                    value="{{ today.strftime('%Y-%m-%d') if today else '' }}"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+            </div>
+        </div>
+        
+        <div>
+            <label for="description" class="block text-sm font-medium text-gray-300 mb-2">Description</label>
+            <input type="text" id="description" name="description"
+                class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
+                placeholder="What is this subscription for?">
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label for="payment_method" class="block text-sm font-medium text-gray-300 mb-2">Payment Method</label>
+                <select id="payment_method" name="payment_method"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+                    <option value="">Select method</option>
+                    <option value="credit_card">Credit Card</option>
+                    <option value="debit_card">Debit Card</option>
+                    <option value="paypal">PayPal</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="direct_debit">Direct Debit</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="account_info" class="block text-sm font-medium text-gray-300 mb-2">Account Info</label>
+                <input type="text" id="account_info" name="account_info"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
+                    placeholder="e.g., **** 1234">
+            </div>
+        </div>
+        
+        <div>
+            <label for="website_url" class="block text-sm font-medium text-gray-300 mb-2">Website URL</label>
+            <input type="url" id="website_url" name="website_url"
+                class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
+                placeholder="https://...">
+        </div>
+        
+        <div>
+            <label for="notes" class="block text-sm font-medium text-gray-300 mb-2">Notes</label>
+            <textarea id="notes" name="notes" rows="3"
+                class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500 resize-none"
+                placeholder="Additional notes..."></textarea>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <input type="checkbox" id="auto_renew" name="auto_renew" checked
+                class="w-4 h-4 bg-dark-700 border-dark-500 rounded focus:ring-blue-500">
+            <label for="auto_renew" class="text-sm text-gray-300">Auto-renew (subscription continues automatically)</label>
+        </div>
+        
+        <div class="flex gap-4 pt-4">
+            <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                Add Subscription
+            </button>
+            <a href="{{ url_for('finance.subscriptions') }}" class="px-6 py-2.5 bg-dark-600 hover:bg-dark-500 text-gray-200 font-medium rounded-lg transition-colors">
+                Cancel
+            </a>
+        </div>
+    </div>
+</form>
+{% endblock %}

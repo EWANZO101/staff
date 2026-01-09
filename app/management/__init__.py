@@ -8,7 +8,7 @@ from calendar import monthrange
 from app import db
 from app.models import (
     RestrictedDay, MonthlyRequirement, LeaveType, 
-    AuditLog, User, Schedule, LeaveRequest
+    AuditLog, User, Schedule, LeaveRequest, SiteSettings
 )
 from app.decorators import permission_required
 
@@ -319,6 +319,51 @@ def audit_log():
     )
     
     return render_template('management/audit_log.html', logs=logs)
+
+
+# ==================== SITE SETTINGS ====================
+
+@bp.route('/site-settings', methods=['GET', 'POST'])
+@login_required
+@permission_required('management.settings')
+def site_settings():
+    if request.method == 'POST':
+        # Update site name
+        site_name = request.form.get('site_name', '').strip()
+        if site_name:
+            SiteSettings.set('site_name', site_name)
+        
+        # Update site subtitle
+        site_subtitle = request.form.get('site_subtitle', '').strip()
+        SiteSettings.set('site_subtitle', site_subtitle)
+        
+        # Update footer text
+        footer_text = request.form.get('footer_text', '').strip()
+        SiteSettings.set('footer_text', footer_text)
+        
+        # Update module toggles
+        modules = ['finance', 'tasks', 'board', 'leave', 'schedule', 'notifications']
+        for module in modules:
+            enabled = request.form.get(f'module_{module}') == 'on'
+            SiteSettings.set(f'module_{module}_enabled', 'true' if enabled else 'false')
+        
+        flash('Site settings updated successfully', 'success')
+        return redirect(url_for('management.site_settings'))
+    
+    # Get current settings
+    settings = {
+        'site_name': SiteSettings.get('site_name', 'Mystic Shores'),
+        'site_subtitle': SiteSettings.get('site_subtitle', 'Roleplay'),
+        'footer_text': SiteSettings.get('footer_text', ''),
+        'module_finance': SiteSettings.get('module_finance_enabled', 'true') == 'true',
+        'module_tasks': SiteSettings.get('module_tasks_enabled', 'true') == 'true',
+        'module_board': SiteSettings.get('module_board_enabled', 'true') == 'true',
+        'module_leave': SiteSettings.get('module_leave_enabled', 'true') == 'true',
+        'module_schedule': SiteSettings.get('module_schedule_enabled', 'true') == 'true',
+        'module_notifications': SiteSettings.get('module_notifications_enabled', 'true') == 'true',
+    }
+    
+    return render_template('management/site_settings.html', settings=settings)
 
 
 # Import timedelta for the report

@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block title %}Subscriptions - Mystic Shores{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-100">Subscriptions</h1>
+        <p class="text-gray-400 mt-1">Track recurring payments and services</p>
+    </div>
+    <a href="{{ url_for('finance.add_subscription') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+        </svg>
+        Add Subscription
+    </a>
+</div>
+
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-dark-800 rounded-xl border border-dark-600 p-5">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm">Monthly Total</p>
+                <p class="text-2xl font-bold text-gray-100">${{ "%.2f"|format(total_monthly) }}</p>
+            </div>
+            <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-dark-800 rounded-xl border border-dark-600 p-5">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm">Yearly Total</p>
+                <p class="text-2xl font-bold text-gray-100">${{ "%.2f"|format(total_yearly) }}</p>
+            </div>
+            <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-dark-800 rounded-xl border border-dark-600 p-5">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm">Active Subscriptions</p>
+                <p class="text-2xl font-bold text-gray-100">{{ active_subs|length }}</p>
+            </div>
+            <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-dark-800 rounded-xl border border-dark-600 p-5">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm">Due This Month</p>
+                <p class="text-2xl font-bold {% if upcoming|length > 0 %}text-yellow-400{% else %}text-gray-100{% endif %}">{{ upcoming|length }}</p>
+            </div>
+            <div class="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main List -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Upcoming Bills -->
+        {% if upcoming %}
+        <div class="bg-dark-800 rounded-xl border border-dark-600 p-6">
+            <h2 class="text-lg font-semibold text-gray-100 mb-4 flex items-center">
+                <svg class="w-5 h-5 text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Upcoming Bills (Next 30 Days)
+            </h2>
+            <div class="space-y-3">
+                {% for sub in upcoming %}
+                <div class="flex items-center justify-between p-4 bg-dark-700 rounded-lg border-l-4 {% if sub.next_billing_date <= today %}border-red-500{% else %}border-yellow-500{% endif %}">
+                    <div class="flex items-center gap-4">
+                        <div>
+                            <p class="text-gray-200 font-medium">{{ sub.name }}</p>
+                            <p class="text-sm text-gray-500">{{ sub.vendor or 'No vendor' }}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-gray-200 font-medium">${{ "%.2f"|format(sub.amount) }}</p>
+                        <p class="text-sm {% if sub.next_billing_date <= today %}text-red-400{% else %}text-yellow-400{% endif %}">
+                            {% if sub.next_billing_date == today %}Today
+                            {% elif sub.next_billing_date < today %}Overdue
+                            {% else %}{{ sub.next_billing_date.strftime('%b %d') }}{% endif %}
+                        </p>
+                    </div>
+                    <form action="{{ url_for('finance.renew_subscription', id=sub.id) }}" method="POST">
+                        <button type="submit" class="ml-4 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors">
+                            Mark Paid
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Active Subscriptions -->
+        <div class="bg-dark-800 rounded-xl border border-dark-600 p-6">
+            <h2 class="text-lg font-semibold text-gray-100 mb-4">Active Subscriptions</h2>
+            
+            {% if active_subs %}
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-dark-600">
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Billing</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase">Amount</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase">Monthly</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Next Bill</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-dark-600">
+                        {% for sub in active_subs %}
+                        <tr class="hover:bg-dark-700/50 transition-colors">
+                            <td class="px-4 py-3">
+                                <div>
+                                    <p class="text-gray-200 font-medium">{{ sub.name }}</p>
+                                    {% if sub.vendor %}
+                                    <p class="text-xs text-gray-500">{{ sub.vendor }}</p>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium bg-dark-600 text-gray-300">
+                                    {{ sub.billing_cycle|title }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-right text-gray-200">${{ "%.2f"|format(sub.amount) }}</td>
+                            <td class="px-4 py-3 text-right text-gray-400">${{ "%.2f"|format(sub.monthly_cost) }}</td>
+                            <td class="px-4 py-3">
+                                {% if sub.next_billing_date %}
+                                <span class="{% if sub.next_billing_date <= today %}text-red-400{% elif sub.is_due_soon %}text-yellow-400{% else %}text-gray-400{% endif %}">
+                                    {{ sub.next_billing_date.strftime('%b %d, %Y') }}
+                                </span>
+                                {% else %}
+                                <span class="text-gray-500">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                <div class="flex items-center justify-end gap-1">
+                                    <a href="{{ url_for('finance.edit_subscription', id=sub.id) }}" class="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-dark-600 rounded transition-colors" title="Edit">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                    </a>
+                                    <form action="{{ url_for('finance.toggle_subscription', id=sub.id) }}" method="POST" class="inline">
+                                        <button type="submit" class="p-1.5 text-gray-400 hover:text-yellow-400 hover:bg-dark-600 rounded transition-colors" title="Pause">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                    <form action="{{ url_for('finance.delete_subscription', id=sub.id) }}" method="POST" class="inline" onsubmit="return confirm('Delete this subscription?');">
+                                        <button type="submit" class="p-1.5 text-gray-400 hover:text-red-400 hover:bg-dark-600 rounded transition-colors" title="Delete">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <svg class="w-12 h-12 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                <p class="text-gray-400">No active subscriptions</p>
+                <a href="{{ url_for('finance.add_subscription') }}" class="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block">Add your first subscription</a>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Inactive Subscriptions -->
+        {% if inactive_subs %}
+        <div class="bg-dark-800 rounded-xl border border-dark-600 p-6">
+            <h2 class="text-lg font-semibold text-gray-100 mb-4">Inactive Subscriptions</h2>
+            <div class="space-y-2">
+                {% for sub in inactive_subs %}
+                <div class="flex items-center justify-between p-3 bg-dark-700 rounded-lg opacity-60">
+                    <div>
+                        <p class="text-gray-300">{{ sub.name }}</p>
+                        <p class="text-xs text-gray-500">${{ "%.2f"|format(sub.amount) }} / {{ sub.billing_cycle }}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <form action="{{ url_for('finance.toggle_subscription', id=sub.id) }}" method="POST">
+                            <button type="submit" class="px-3 py-1 text-xs font-medium bg-green-600 hover:bg-green-700 text-white rounded transition-colors">
+                                Reactivate
+                            </button>
+                        </form>
+                        <form action="{{ url_for('finance.delete_subscription', id=sub.id) }}" method="POST" onsubmit="return confirm('Delete permanently?');">
+                            <button type="submit" class="px-3 py-1 text-xs font-medium bg-red-600 hover:bg-red-700 text-white rounded transition-colors">
+                                Delete
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- By Category -->
+        <div class="bg-dark-800 rounded-xl border border-dark-600 p-6">
+            <h2 class="text-lg font-semibold text-gray-100 mb-4">By Category</h2>
+            {% if by_category %}
+            <div class="space-y-3">
+                {% for cat_name, data in by_category.items() %}
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-300">{{ cat_name }}</p>
+                        <p class="text-xs text-gray-500">{{ data.subs|length }} subscription(s)</p>
+                    </div>
+                    <p class="text-gray-200 font-medium">${{ "%.2f"|format(data.monthly) }}/mo</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-sm">No subscriptions yet</p>
+            {% endif %}
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="bg-dark-800 rounded-xl border border-dark-600 p-6">
+            <h2 class="text-lg font-semibold text-gray-100 mb-4">Cost Breakdown</h2>
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-400">Daily</span>
+                        <span class="text-gray-200">${{ "%.2f"|format(total_monthly / 30) }}</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-400">Weekly</span>
+                        <span class="text-gray-200">${{ "%.2f"|format(total_monthly / 4.33) }}</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-400">Monthly</span>
+                        <span class="text-gray-200">${{ "%.2f"|format(total_monthly) }}</span>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-dark-600">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-400">Yearly</span>
+                        <span class="text-gray-200 font-medium">${{ "%.2f"|format(total_yearly) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

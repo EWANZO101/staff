@@ -3,12 +3,51 @@ Authentication Blueprint
 """
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, current_user, login_required
-from datetime import datetime
+from datetime import datetime, timedelta
 from app import db
 from app.models import User, Role, Notification, LeaveType, LeaveAllocation
 from app.auth.forms import LoginForm, SignupForm
 
 bp = Blueprint('auth', __name__)
+
+# Simple rate limiting for login attempts
+login_attempts = {}
+MAX_ATTEMPTS = 5
+LOCKOUT_TIME = 300  # 5 minutes
+
+
+def check_rate_limit(ip):
+    """Check if IP is rate limited"""
+    now = datetime.utcnow()
+    if ip in login_attempts:
+        attempts, lockout_until = login_attempts[ip]
+        if lockout_until and now < lockout_until:
+            return False, int((lockout_until - now).total_seconds())
+        if lockout_until and now >= lockout_until:
+            login_attempts[ip] = (0, None)
+    return True, 0
+
+
+def record_failed_attempt(ip):
+    """Record a failed login attempt"""
+    now = datetime.utcnow()
+    if ip in login_attempts:
+        attempts, _ = login_attempts[ip]
+        attempts += 1
+    else:
+        attempts = 1
+    
+    if attempts >= MAX_ATTEMPTS:
+        lockout_until = now + timedelta(seconds=LOCKOUT_TIME)
+        login_attempts[ip] = (attempts, lockout_until)
+    else:
+        login_attempts[ip] = (attempts, None)
+
+
+def clear_attempts(ip):
+    """Clear login attempts on successful login"""
+    if ip in login_attempts:
+        del login_attempts[ip]
 
 
 @bp.route('/login', methods=['GET', 'POST'])
@@ -16,17 +55,28 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
     
+    # Check rate limiting
+    client_ip = request.remote_addr
+    allowed, wait_time = check_rate_limit(client_ip)
+    if not allowed:
+        flash(f'Too many login attempts. Please wait {wait_time} seconds.', 'error')
+        return render_template('auth/login.html', form=LoginForm())
+    
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data.lower()).first()
         
         if user is None or not user.check_password(form.password.data):
+            record_failed_attempt(client_ip)
             flash('Invalid email or password', 'error')
             return redirect(url_for('auth.login'))
         
         if not user.is_active:
             flash('Your account has been deactivated. Please contact an administrator.', 'error')
             return redirect(url_for('auth.login'))
+        
+        # Successful login - clear rate limit
+        clear_attempts(client_ip)
         
         login_user(user, remember=form.remember_me.data)
         user.last_login = datetime.utcnow()

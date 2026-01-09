@@ -9,7 +9,7 @@ from sqlalchemy import func, extract
 from app import db
 from app.models import (
     User, Expense, ExpenseCategory, Budget, FinancialReport,
-    FinancialLink, Invoice, PayrollRecord, Notification
+    FinancialLink, Invoice, PayrollRecord, Notification, Subscription
 )
 from app.decorators import permission_required
 
@@ -74,6 +74,14 @@ def dashboard():
         Expense.status.in_(['approved', 'reimbursed'])
     ).scalar() or 0
     
+    # Subscriptions
+    active_subs = Subscription.query.filter_by(is_active=True).all()
+    monthly_subscriptions = sum(s.monthly_cost for s in active_subs)
+    upcoming_subs = [s for s in active_subs if s.next_billing_date and s.next_billing_date <= today + timedelta(days=7)]
+    
+    # Total monthly (expenses + subscriptions)
+    total_monthly = float(monthly_expenses) + monthly_subscriptions
+    
     return render_template('finance/dashboard.html',
         monthly_expenses=monthly_expenses,
         pending_expenses=pending_expenses,
@@ -82,7 +90,11 @@ def dashboard():
         recent_expenses=recent_expenses,
         category_breakdown=category_breakdown,
         quick_links=quick_links,
-        ytd_total=ytd_total
+        ytd_total=ytd_total,
+        monthly_subscriptions=monthly_subscriptions,
+        upcoming_subs=upcoming_subs,
+        total_monthly=total_monthly,
+        active_subs_count=len(active_subs)
     )
 
 
@@ -686,3 +698,174 @@ def api_expense_stats():
         })
     
     return jsonify(months_data)
+
+
+# ==================== SUBSCRIPTIONS ====================
+
+@bp.route('/subscriptions')
+@login_required
+@permission_required('finance.view')
+def subscriptions():
+    """List all subscriptions"""
+    active_subs = Subscription.query.filter_by(is_active=True).order_by(Subscription.next_billing_date).all()
+    inactive_subs = Subscription.query.filter_by(is_active=False).order_by(Subscription.name).all()
+    
+    # Calculate totals
+    total_monthly = sum(s.monthly_cost for s in active_subs)
+    total_yearly = sum(s.yearly_cost for s in active_subs)
+    
+    # Group by category
+    by_category = {}
+    for sub in active_subs:
+        cat_name = sub.category.name if sub.category else 'Uncategorized'
+        if cat_name not in by_category:
+            by_category[cat_name] = {'subs': [], 'monthly': 0}
+        by_category[cat_name]['subs'].append(sub)
+        by_category[cat_name]['monthly'] += sub.monthly_cost
+    
+    # Upcoming bills (next 30 days)
+    upcoming = [s for s in active_subs if s.next_billing_date and s.next_billing_date <= date.today() + timedelta(days=30)]
+    
+    return render_template('finance/subscriptions.html',
+        active_subs=active_subs,
+        inactive_subs=inactive_subs,
+        total_monthly=total_monthly,
+        total_yearly=total_yearly,
+        by_category=by_category,
+        upcoming=upcoming
+    )
+
+
+@bp.route('/subscriptions/add', methods=['GET', 'POST'])
+@login_required
+@permission_required('finance.view')
+def add_subscription():
+    """Add a new subscription"""
+    if request.method == 'POST':
+        start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+        billing_cycle = request.form.get('billing_cycle')
+        
+        # Calculate next billing date
+        next_billing = calculate_next_billing(start_date, billing_cycle)
+        
+        sub = Subscription(
+            name=request.form.get('name'),
+            description=request.form.get('description'),
+            vendor=request.form.get('vendor'),
+            amount=Decimal(request.form.get('amount')),
+            billing_cycle=billing_cycle,
+            category_id=request.form.get('category_id') or None,
+            start_date=start_date,
+            next_billing_date=next_billing,
+            payment_method=request.form.get('payment_method'),
+            account_info=request.form.get('account_info'),
+            website_url=request.form.get('website_url'),
+            notes=request.form.get('notes'),
+            auto_renew=request.form.get('auto_renew') == 'on',
+            created_by=current_user.id
+        )
+        db.session.add(sub)
+        db.session.commit()
+        
+        flash('Subscription added successfully', 'success')
+        return redirect(url_for('finance.subscriptions'))
+    
+    categories = ExpenseCategory.query.filter_by(is_active=True).all()
+    return render_template('finance/add_subscription.html', categories=categories)
+
+
+@bp.route('/subscriptions/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+@permission_required('finance.view')
+def edit_subscription(id):
+    """Edit a subscription"""
+    sub = Subscription.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        sub.name = request.form.get('name')
+        sub.description = request.form.get('description')
+        sub.vendor = request.form.get('vendor')
+        sub.amount = Decimal(request.form.get('amount'))
+        sub.billing_cycle = request.form.get('billing_cycle')
+        sub.category_id = request.form.get('category_id') or None
+        sub.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+        if request.form.get('next_billing_date'):
+            sub.next_billing_date = datetime.strptime(request.form.get('next_billing_date'), '%Y-%m-%d').date()
+        sub.payment_method = request.form.get('payment_method')
+        sub.account_info = request.form.get('account_info')
+        sub.website_url = request.form.get('website_url')
+        sub.notes = request.form.get('notes')
+        sub.auto_renew = request.form.get('auto_renew') == 'on'
+        db.session.commit()
+        
+        flash('Subscription updated successfully', 'success')
+        return redirect(url_for('finance.subscriptions'))
+    
+    categories = ExpenseCategory.query.filter_by(is_active=True).all()
+    return render_template('finance/edit_subscription.html', sub=sub, categories=categories)
+
+
+@bp.route('/subscriptions/<int:id>/toggle', methods=['POST'])
+@login_required
+@permission_required('finance.view')
+def toggle_subscription(id):
+    """Toggle subscription active status"""
+    sub = Subscription.query.get_or_404(id)
+    sub.is_active = not sub.is_active
+    db.session.commit()
+    
+    flash(f'Subscription {"activated" if sub.is_active else "deactivated"}', 'success')
+    return redirect(url_for('finance.subscriptions'))
+
+
+@bp.route('/subscriptions/<int:id>/delete', methods=['POST'])
+@login_required
+@permission_required('finance.view')
+def delete_subscription(id):
+    """Delete a subscription"""
+    sub = Subscription.query.get_or_404(id)
+    db.session.delete(sub)
+    db.session.commit()
+    
+    flash('Subscription deleted', 'success')
+    return redirect(url_for('finance.subscriptions'))
+
+
+@bp.route('/subscriptions/<int:id>/renew', methods=['POST'])
+@login_required
+@permission_required('finance.view')
+def renew_subscription(id):
+    """Mark subscription as renewed and update next billing date"""
+    sub = Subscription.query.get_or_404(id)
+    sub.next_billing_date = calculate_next_billing(date.today(), sub.billing_cycle)
+    db.session.commit()
+    
+    flash('Subscription renewed', 'success')
+    return redirect(url_for('finance.subscriptions'))
+
+
+def calculate_next_billing(from_date, billing_cycle):
+    """Calculate the next billing date based on cycle"""
+    if billing_cycle == 'weekly':
+        return from_date + timedelta(days=7)
+    elif billing_cycle == 'monthly':
+        # Add one month
+        month = from_date.month + 1
+        year = from_date.year
+        if month > 12:
+            month = 1
+            year += 1
+        day = min(from_date.day, 28)  # Safe day for all months
+        return from_date.replace(year=year, month=month, day=day)
+    elif billing_cycle == 'quarterly':
+        # Add 3 months
+        month = from_date.month + 3
+        year = from_date.year
+        while month > 12:
+            month -= 12
+            year += 1
+        day = min(from_date.day, 28)
+        return from_date.replace(year=year, month=month, day=day)
+    elif billing_cycle == 'yearly':
+        return from_date.replace(year=from_date.year + 1)
+    return from_date + timedelta(days=30)
