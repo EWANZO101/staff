@@ -35,7 +35,8 @@ def index():
     
     tasks = query.order_by(
         Task.priority.desc(),
-        Task.due_date.asc().nullslast(),
+        db.case((Task.due_date.is_(None), 1), else_=0),
+        Task.due_date.asc(),
         Task.created_at.desc()
     ).paginate(page=page, per_page=20)
     
@@ -234,7 +235,8 @@ def my_tasks():
     
     tasks = query.order_by(
         Task.priority.desc(),
-        Task.due_date.asc().nullslast()
+        db.case((Task.due_date.is_(None), 1), else_=0),
+        Task.due_date.asc()
     ).all()
     
     return render_template('tasks/my_tasks.html', tasks=tasks, current_status=status)

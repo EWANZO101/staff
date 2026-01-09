@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if budget else 'Create' }} Budget - Mystic Shores{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('finance.budgets') }}" class="inline-flex items-center text-gray-400 hover:text-gray-200 mb-4">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        Back to Budgets
+    </a>
+    <h1 class="text-2xl font-bold text-gray-100">{{ 'Edit' if budget else 'Create' }} Budget</h1>
+</div>
+
+<form method="POST" class="max-w-2xl">
+    <div class="bg-dark-800 rounded-xl border border-dark-600 p-6 space-y-6">
+        <div>
+            <label for="name" class="block text-sm font-medium text-gray-300 mb-2">Budget Name *</label>
+            <input type="text" id="name" name="name" required
+                value="{{ budget.name if budget else '' }}"
+                class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
+                placeholder="e.g., Q1 Marketing Budget">
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label for="amount" class="block text-sm font-medium text-gray-300 mb-2">Budget Amount (USD) *</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <input type="number" id="amount" name="amount" step="0.01" min="0" required
+                        value="{{ budget.amount if budget else '' }}"
+                        class="w-full pl-8 pr-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
+                        placeholder="10000.00">
+                </div>
+            </div>
+            
+            <div>
+                <label for="period_type" class="block text-sm font-medium text-gray-300 mb-2">Period Type *</label>
+                <select id="period_type" name="period_type" required
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+                    <option value="monthly" {% if budget and budget.period_type == 'monthly' %}selected{% endif %}>Monthly</option>
+                    <option value="quarterly" {% if budget and budget.period_type == 'quarterly' %}selected{% endif %}>Quarterly</option>
+                    <option value="yearly" {% if budget and budget.period_type == 'yearly' %}selected{% endif %}>Yearly</option>
+                    <option value="custom" {% if budget and budget.period_type == 'custom' %}selected{% endif %}>Custom</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label for="start_date" class="block text-sm font-medium text-gray-300 mb-2">Start Date *</label>
+                <input type="date" id="start_date" name="start_date" required
+                    value="{{ budget.start_date.strftime('%Y-%m-%d') if budget else '' }}"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+            </div>
+            
+            <div>
+                <label for="end_date" class="block text-sm font-medium text-gray-300 mb-2">End Date *</label>
+                <input type="date" id="end_date" name="end_date" required
+                    value="{{ budget.end_date.strftime('%Y-%m-%d') if budget else '' }}"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label for="category_id" class="block text-sm font-medium text-gray-300 mb-2">Category (Optional)</label>
+                <select id="category_id" name="category_id"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if budget and budget.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Limit budget to a specific expense category</p>
+            </div>
+            
+            <div>
+                <label for="department" class="block text-sm font-medium text-gray-300 mb-2">Department (Optional)</label>
+                <input type="text" id="department" name="department"
+                    value="{{ budget.department if budget else '' }}"
+                    class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
+                    placeholder="e.g., Marketing">
+            </div>
+        </div>
+        
+        <div>
+            <label for="notes" class="block text-sm font-medium text-gray-300 mb-2">Notes</label>
+            <textarea id="notes" name="notes" rows="3"
+                class="w-full px-4 py-2.5 bg-dark-700 border border-dark-500 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500 resize-none"
+                placeholder="Additional notes...">{{ budget.notes if budget else '' }}</textarea>
+        </div>
+        
+        <div class="flex gap-4 pt-4">
+            <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                {{ 'Update' if budget else 'Create' }} Budget
+            </button>
+            <a href="{{ url_for('finance.budgets') }}" class="px-6 py-2.5 bg-dark-600 hover:bg-dark-500 text-gray-200 font-medium rounded-lg transition-colors">
+                Cancel
+            </a>
+            {% if budget %}
+            <form action="{{ url_for('finance.delete_budget', id=budget.id) }}" method="POST" class="ml-auto" onsubmit="return confirm('Delete this budget?');">
+                <button type="submit" class="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors">
+                    Delete
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</form>
+{% endblock %}

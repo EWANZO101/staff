@@ -45,6 +45,9 @@ def create_app(config_class=Config):
     from app.api import bp as api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
     
+    from app.finance import bp as finance_bp
+    app.register_blueprint(finance_bp, url_prefix='/finance')
+    
     # Create tables and initialize default data
     with app.app_context():
         db.create_all()
@@ -66,9 +69,11 @@ def create_app(config_class=Config):
     # Context processors
     @app.context_processor
     def utility_processor():
-        from datetime import date
+        from datetime import date, datetime, timedelta
         return {
             'today': date.today(),
+            'now': datetime.now(),
+            'timedelta': timedelta,
             'current_year': date.today().year
         }
     

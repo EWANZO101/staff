@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ report.title }} - Mystic Shores{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('finance.reports') }}" class="inline-flex items-center text-gray-400 hover:text-gray-200 mb-4">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        Back to Reports
+    </a>
+    <h1 class="text-2xl font-bold text-gray-100">{{ report.title }}</h1>
+    <p class="text-gray-400 mt-1">{{ report.period_start.strftime('%B %d, %Y') }} - {{ report.period_end.strftime('%B %d, %Y') }}</p>
+</div>
+
+<div class="bg-dark-800 rounded-xl border border-dark-600 p-6">
+    {% if report.report_type == 'expense_summary' %}
+    <!-- Expense Summary Report -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-dark-700 rounded-lg p-4">
+            <p class="text-sm text-gray-400">Total Expenses</p>
+            <p class="text-2xl font-bold text-gray-100">${{ "%.2f"|format(data.total) }}</p>
+        </div>
+        <div class="bg-dark-700 rounded-lg p-4">
+            <p class="text-sm text-gray-400">Number of Expenses</p>
+            <p class="text-2xl font-bold text-gray-100">{{ data.count }}</p>
+        </div>
+        <div class="bg-dark-700 rounded-lg p-4">
+            <p class="text-sm text-gray-400">Average Expense</p>
+            <p class="text-2xl font-bold text-gray-100">${{ "%.2f"|format(data.total / data.count if data.count > 0 else 0) }}</p>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- By Category -->
+        <div>
+            <h3 class="text-lg font-medium text-gray-200 mb-4">By Category</h3>
+            <div class="space-y-3">
+                {% for cat, amount in data.by_category.items() %}
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-300">{{ cat }}</span>
+                    <span class="text-gray-200 font-medium">${{ "%.2f"|format(amount) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- By User -->
+        <div>
+            <h3 class="text-lg font-medium text-gray-200 mb-4">By User</h3>
+            <div class="space-y-3">
+                {% for user, amount in data.by_user.items() %}
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-300">{{ user }}</span>
+                    <span class="text-gray-200 font-medium">${{ "%.2f"|format(amount) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    {% elif report.report_type == 'budget_analysis' %}
+    <!-- Budget Analysis Report -->
+    <div class="space-y-4">
+        {% for budget in data.budgets %}
+        <div class="bg-dark-700 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-gray-200 font-medium">{{ budget.name }}</h3>
+                <span class="text-sm {% if budget.remaining >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
+                    {{ "%.1f"|format(budget.usage_pct) }}% used
+                </span>
+            </div>
+            <div class="w-full bg-dark-600 rounded-full h-2 mb-2">
+                <div class="h-2 rounded-full transition-all {% if budget.usage_pct > 90 %}bg-red-500{% elif budget.usage_pct > 75 %}bg-yellow-500{% else %}bg-green-500{% endif %}" 
+                     style="width: {{ budget.usage_pct }}%"></div>
+            </div>
+            <div class="flex items-center justify-between text-sm text-gray-400">
+                <span>Allocated: ${{ "%.0f"|format(budget.allocated) }}</span>
+                <span>Spent: ${{ "%.0f"|format(budget.spent) }}</span>
+                <span>Remaining: ${{ "%.0f"|format(budget.remaining) }}</span>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-gray-500">No budget data for this period</p>
+        {% endfor %}
+    </div>
+    
+    {% elif report.report_type == 'category_breakdown' %}
+    <!-- Category Breakdown Report -->
+    <div class="space-y-3">
+        {% for cat in data.categories %}
+        <div class="flex items-center justify-between p-4 bg-dark-700 rounded-lg">
+            <div>
+                <p class="text-gray-200 font-medium">{{ cat.name }}</p>
+                <p class="text-xs text-gray-500">{{ cat.count }} expense(s)</p>
+            </div>
+            <p class="text-xl font-bold text-gray-100">${{ "%.2f"|format(cat.total) }}</p>
+        </div>
+        {% else %}
+        <p class="text-gray-500">No category data for this period</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="mt-4 text-sm text-gray-500">
+    Generated by {{ report.generator.full_name if report.generator else 'System' }} on {{ report.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+</div>
+{% endblock %}

@@ -35,13 +35,13 @@ class User(UserMixin, db.Model):
     last_login = db.Column(db.DateTime)
     
     # Relationships
-    roles = db.relationship('Role', secondary=user_roles, backref=db.backref('users', lazy='dynamic'))
-    schedules = db.relationship('Schedule', backref='user', lazy='dynamic', foreign_keys='Schedule.user_id')
-    leave_allocations = db.relationship('LeaveAllocation', backref='user', lazy='dynamic')
-    leave_requests = db.relationship('LeaveRequest', backref='user', lazy='dynamic', foreign_keys='LeaveRequest.user_id')
-    unavailability = db.relationship('Unavailability', backref='user', lazy='dynamic')
-    tasks_assigned = db.relationship('Task', backref='assignee', lazy='dynamic', foreign_keys='Task.assigned_to')
-    notifications = db.relationship('Notification', backref='user', lazy='dynamic')
+    roles = db.relationship('Role', secondary=user_roles, backref=db.backref('users', lazy=True))
+    schedules = db.relationship('Schedule', backref='user', lazy=True, foreign_keys='Schedule.user_id')
+    leave_allocations = db.relationship('LeaveAllocation', backref='user', lazy=True)
+    leave_requests = db.relationship('LeaveRequest', backref='user', lazy=True, foreign_keys='LeaveRequest.user_id')
+    unavailability = db.relationship('Unavailability', backref='user', lazy=True)
+    tasks_assigned = db.relationship('Task', backref='assignee', lazy=True, foreign_keys='Task.assigned_to')
+    notifications = db.relationship('Notification', back_populates='user', lazy=True)
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -70,10 +70,10 @@ class User(UserMixin, db.Model):
         return any(role.name == role_name for role in self.roles)
     
     def get_unread_notifications_count(self):
-        return self.notifications.filter_by(is_read=False).count()
+        return Notification.query.filter_by(user_id=self.id, is_read=False).count()
     
     def get_recent_notifications(self, limit=10):
-        return self.notifications.order_by(Notification.created_at.desc()).limit(limit).all()
+        return Notification.query.filter_by(user_id=self.id).order_by(Notification.created_at.desc()).limit(limit).all()
 
 
 @login_manager.user_loader
@@ -92,7 +92,7 @@ class Role(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     permissions = db.relationship('Permission', secondary=role_permissions, 
-                                  backref=db.backref('roles', lazy='dynamic'))
+                                  backref=db.backref('roles', lazy=True))
 
 
 class Permission(db.Model):
@@ -163,7 +163,7 @@ class LeaveAllocation(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    leave_type = db.relationship('LeaveType')
+    leave_type = db.relationship('LeaveType', backref='allocations')
     
     __table_args__ = (
         db.UniqueConstraint('user_id', 'leave_type_id', 'year', name='unique_user_leave_year'),
@@ -193,7 +193,7 @@ class LeaveRequest(db.Model):
     review_notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    leave_type = db.relationship('LeaveType')
+    leave_type = db.relationship('LeaveType', backref='requests')
     reviewer = db.relationship('User', foreign_keys=[reviewed_by])
     
     @property
@@ -290,6 +290,9 @@ class Notification(db.Model):
     related_id = db.Column(db.Integer)  # ID of related object (schedule, task, etc.)
     related_type = db.Column(db.String(50))  # Type of related object
     
+    # Relationship
+    user = db.relationship('User', back_populates='notifications')
+    
     __table_args__ = (
         db.Index('idx_notification_user_unread', 'user_id', 'is_read'),
     )
@@ -378,6 +381,19 @@ def init_default_data():
         ('Manage Requirements', 'management.requirements', 'Set monthly requirements', 'management'),
         ('View Reports', 'management.reports', 'View system reports', 'management'),
         ('System Settings', 'management.settings', 'Manage system settings', 'management'),
+        
+        # Financial permissions
+        ('View Finance Dashboard', 'finance.view', 'View financial dashboard', 'finance'),
+        ('Submit Expenses', 'finance.expenses.submit', 'Submit expense claims', 'finance'),
+        ('Approve Expenses', 'finance.expenses.approve', 'Approve/reject expenses', 'finance'),
+        ('Manage Budgets', 'finance.budgets', 'Create and manage budgets', 'finance'),
+        ('View Reports', 'finance.reports', 'View financial reports', 'finance'),
+        ('Generate Reports', 'finance.reports.generate', 'Generate financial reports', 'finance'),
+        ('Manage Invoices', 'finance.invoices', 'Manage invoices', 'finance'),
+        ('View Payroll', 'finance.payroll.view', 'View payroll records', 'finance'),
+        ('Manage Payroll', 'finance.payroll.manage', 'Create and manage payroll', 'finance'),
+        ('Manage Financial Links', 'finance.links', 'Manage financial resource links', 'finance'),
+        ('Full Financial Access', 'finance.admin', 'Full financial administration', 'finance'),
     ]
     
     permissions = {}
@@ -436,4 +452,206 @@ def init_default_data():
         lt = LeaveType(name=name, description=desc, is_paid=is_paid, color=color)
         db.session.add(lt)
     
+    # Default expense categories
+    expense_categories = [
+        ('Office Supplies', 'Pens, paper, stationery', '#3B82F6'),
+        ('Travel', 'Transportation and accommodation', '#10B981'),
+        ('Meals & Entertainment', 'Client meals and entertainment', '#F59E0B'),
+        ('Equipment', 'Hardware and equipment purchases', '#8B5CF6'),
+        ('Software & Subscriptions', 'Software licenses and subscriptions', '#EC4899'),
+        ('Marketing', 'Marketing and advertising expenses', '#EF4444'),
+        ('Utilities', 'Phone, internet, utilities', '#6B7280'),
+        ('Professional Services', 'Consulting and professional fees', '#14B8A6'),
+        ('Training', 'Training and development', '#F97316'),
+        ('Miscellaneous', 'Other expenses', '#64748B'),
+    ]
+    
+    for name, desc, color in expense_categories:
+        cat = ExpenseCategory(name=name, description=desc, color=color)
+        db.session.add(cat)
+    
     db.session.commit()
+
+
+# ==================== FINANCIAL MODELS ====================
+
+class ExpenseCategory(db.Model):
+    """Categories for organizing expenses"""
+    __tablename__ = 'expense_categories'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    description = db.Column(db.String(255))
+    color = db.Column(db.String(7), default='#3B82F6')
+    is_active = db.Column(db.Boolean, default=True)
+    budget_limit = db.Column(db.Numeric(12, 2))  # Optional monthly budget limit
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    expenses = db.relationship('Expense', backref='category', lazy=True)
+
+
+class Expense(db.Model):
+    """Individual expense records"""
+    __tablename__ = 'expenses'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    currency = db.Column(db.String(3), default='USD')
+    description = db.Column(db.String(500), nullable=False)
+    vendor = db.Column(db.String(200))
+    receipt_url = db.Column(db.String(500))  # URL or path to receipt image
+    expense_date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected, reimbursed
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    approved_at = db.Column(db.DateTime)
+    rejection_reason = db.Column(db.String(500))
+    reimbursed_at = db.Column(db.DateTime)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    submitter = db.relationship('User', foreign_keys=[user_id], backref='expenses_submitted')
+    approver = db.relationship('User', foreign_keys=[approved_by], backref='expenses_approved')
+    
+    __table_args__ = (
+        db.Index('idx_expense_user_date', 'user_id', 'expense_date'),
+        db.Index('idx_expense_status', 'status'),
+    )
+
+
+class Budget(db.Model):
+    """Budget allocations by category and period"""
+    __tablename__ = 'budgets'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
+    department = db.Column(db.String(100))  # Optional department-specific budget
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    period_type = db.Column(db.String(20), default='monthly')  # monthly, quarterly, yearly
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    category = db.relationship('ExpenseCategory', backref='budgets')
+    creator = db.relationship('User', backref='budgets_created')
+    
+    @property
+    def spent_amount(self):
+        """Calculate total spent against this budget"""
+        from sqlalchemy import func
+        query = db.session.query(func.sum(Expense.amount)).filter(
+            Expense.expense_date >= self.start_date,
+            Expense.expense_date <= self.end_date,
+            Expense.status.in_(['approved', 'reimbursed'])
+        )
+        if self.category_id:
+            query = query.filter(Expense.category_id == self.category_id)
+        result = query.scalar()
+        return result or 0
+    
+    @property
+    def remaining_amount(self):
+        return float(self.amount) - float(self.spent_amount)
+    
+    @property
+    def usage_percentage(self):
+        if self.amount == 0:
+            return 0
+        return min(100, (float(self.spent_amount) / float(self.amount)) * 100)
+
+
+class FinancialReport(db.Model):
+    """Generated financial reports"""
+    __tablename__ = 'financial_reports'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    report_type = db.Column(db.String(50), nullable=False)  # expense_summary, budget_analysis, department_breakdown
+    period_start = db.Column(db.Date, nullable=False)
+    period_end = db.Column(db.Date, nullable=False)
+    data = db.Column(db.Text)  # JSON data for the report
+    file_url = db.Column(db.String(500))  # URL to generated PDF/Excel
+    generated_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    generator = db.relationship('User', backref='reports_generated')
+
+
+class FinancialLink(db.Model):
+    """Quick links to external financial resources"""
+    __tablename__ = 'financial_links'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    description = db.Column(db.String(500))
+    category = db.Column(db.String(100))  # reports, tools, policies, external
+    icon = db.Column(db.String(50), default='link')  # Icon identifier
+    is_active = db.Column(db.Boolean, default=True)
+    order = db.Column(db.Integer, default=0)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    creator = db.relationship('User', backref='financial_links_created')
+
+
+class Invoice(db.Model):
+    """Invoice tracking"""
+    __tablename__ = 'invoices'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_number = db.Column(db.String(50), unique=True, nullable=False)
+    vendor = db.Column(db.String(200), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    currency = db.Column(db.String(3), default='USD')
+    issue_date = db.Column(db.Date, nullable=False)
+    due_date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), default='pending')  # pending, paid, overdue, cancelled
+    payment_date = db.Column(db.Date)
+    payment_method = db.Column(db.String(50))
+    category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
+    description = db.Column(db.Text)
+    attachment_url = db.Column(db.String(500))
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    category = db.relationship('ExpenseCategory', backref='invoices')
+    creator = db.relationship('User', backref='invoices_created')
+    
+    @property
+    def is_overdue(self):
+        return self.status == 'pending' and self.due_date < date.today()
+
+
+class PayrollRecord(db.Model):
+    """Payroll records for staff"""
+    __tablename__ = 'payroll_records'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    period_start = db.Column(db.Date, nullable=False)
+    period_end = db.Column(db.Date, nullable=False)
+    base_salary = db.Column(db.Numeric(12, 2), nullable=False)
+    overtime_hours = db.Column(db.Numeric(6, 2), default=0)
+    overtime_rate = db.Column(db.Numeric(8, 2), default=0)
+    bonuses = db.Column(db.Numeric(12, 2), default=0)
+    deductions = db.Column(db.Numeric(12, 2), default=0)
+    tax_amount = db.Column(db.Numeric(12, 2), default=0)
+    net_pay = db.Column(db.Numeric(12, 2), nullable=False)
+    status = db.Column(db.String(20), default='draft')  # draft, approved, paid
+    payment_date = db.Column(db.Date)
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    employee = db.relationship('User', foreign_keys=[user_id], backref='payroll_records')
+    creator = db.relationship('User', foreign_keys=[created_by], backref='payroll_created')

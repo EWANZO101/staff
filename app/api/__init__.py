@@ -168,7 +168,10 @@ def tasks_summary():
     tasks = Task.query.filter(
         Task.assigned_to == current_user.id,
         Task.status.in_(['pending', 'in_progress'])
-    ).order_by(Task.due_date.asc().nullslast()).limit(5).all()
+    ).order_by(
+        db.case((Task.due_date.is_(None), 1), else_=0),
+        Task.due_date.asc()
+    ).limit(5).all()
     
     return jsonify({
         'tasks': [{
