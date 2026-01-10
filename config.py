@@ -3,7 +3,6 @@ Application Configuration
 """
 import os
 from datetime import timedelta
-
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -48,6 +47,9 @@ class Config:
     RATELIMIT_ENABLED = True
     RATELIMIT_DEFAULT = "200 per day"
     RATELIMIT_STORAGE_URL = "memory://"
+    
+    # License server (license validation is ALWAYS enabled - hardcoded in app)
+    LICENSE_SERVER = os.environ.get('LICENSE_SERVER', 'http://localhost:5010')
 
 
 class DevelopmentConfig(Config):

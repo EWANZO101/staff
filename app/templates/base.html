@@ -299,7 +299,7 @@
                 </li>
                 {% endif %}
                 
-                {% if current_user.has_permission('leave.approve') %}
+                {% if module_leave and current_user.has_permission('leave.approve') %}
                 <li>
                     <a href="{{ url_for('admin.leave_requests') }}" class="flex items-center p-2 rounded-lg hover:bg-dark-600 group {% if request.endpoint == 'admin.leave_requests' %}bg-dark-600{% endif %}">
                         <svg class="w-5 h-5 text-gray-400 group-hover:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -362,7 +362,7 @@
                 </li>
                 {% endif %}
                 
-                {% if current_user.has_permission('management.settings') %}
+                {% if module_leave and current_user.has_permission('management.settings') %}
                 <li>
                     <a href="{{ url_for('management.leave_types') }}" class="flex items-center p-2 rounded-lg hover:bg-dark-600 group {% if 'leave_types' in request.endpoint %}bg-dark-600{% endif %}">
                         <svg class="w-5 h-5 text-gray-400 group-hover:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">

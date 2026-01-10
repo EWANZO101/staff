@@ -19,8 +19,11 @@ class SiteSettings(db.Model):
     @staticmethod
     def get(key, default=None):
         """Get a setting value by key"""
-        setting = SiteSettings.query.filter_by(key=key).first()
-        return setting.value if setting else default
+        try:
+            setting = SiteSettings.query.filter_by(key=key).first()
+            return setting.value if setting else default
+        except:
+            return default
     
     @staticmethod
     def set(key, value):
@@ -37,8 +40,11 @@ class SiteSettings(db.Model):
     @staticmethod
     def get_all():
         """Get all settings as a dictionary"""
-        settings = SiteSettings.query.all()
-        return {s.key: s.value for s in settings}
+        try:
+            settings = SiteSettings.query.all()
+            return {s.key: s.value for s in settings}
+        except:
+            return {}
 
 
 # Association tables for many-to-many relationships
@@ -180,6 +186,7 @@ class LeaveType(db.Model):
     is_paid = db.Column(db.Boolean, default=True)
     color = db.Column(db.String(7), default='#3B82F6')  # Hex color for UI
     is_active = db.Column(db.Boolean, default=True)
+    requires_approval = db.Column(db.Boolean, default=True)  # Added for leave approval workflow
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -238,9 +245,7 @@ class LeaveRequest(db.Model):
         while current <= self.end_date:
             if current.weekday() < 5:  # Monday = 0, Friday = 4
                 days += 1
-            current = date(current.year, current.month, current.day + 1) if current.day < 28 else \
-                      date(current.year, current.month + 1, 1) if current.month < 12 else \
-                      date(current.year + 1, 1, 1)
+            current += timedelta(days=1)
         return days
 
 

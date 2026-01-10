@@ -26,6 +26,36 @@ def create_app(config_class=Config):
     login_manager.init_app(app)
     csrf.init_app(app)
     
+    # ============================================================
+    # LICENSE VALIDATION - ALWAYS ENABLED - CANNOT BE DISABLED
+    # ============================================================
+    from app.license import validate_license, license_context
+    
+    @app.context_processor
+    def inject_license():
+        return license_context()
+    
+    @app.before_request
+    def check_license():
+        # Skip for static files and auth routes
+        if request.endpoint and (
+            request.endpoint.startswith('static') or
+            request.endpoint.startswith('auth.')
+        ):
+            return None
+        
+        # Also check path as fallback
+        if request.path.startswith('/auth/') or request.path.startswith('/static/'):
+            return None
+        
+        result = validate_license()
+        if not result['valid']:
+            return render_template('errors/license_error.html', 
+                error=result['error'],
+                current_year=2025
+            ), 403
+    # ============================================================
+    
     # Security headers
     @app.after_request
     def add_security_headers(response):
@@ -174,6 +204,9 @@ def create_app(config_class=Config):
     def utility_processor():
         from datetime import date, datetime, timedelta
         from app.models import SiteSettings
+        from app.license import is_feature_enabled
+        
+        # Modules require BOTH site settings enabled AND license feature
         return {
             'today': date.today(),
             'now': datetime.now(),
@@ -181,11 +214,11 @@ def create_app(config_class=Config):
             'current_year': date.today().year,
             'site_name': SiteSettings.get('site_name', 'Mystic Shores'),
             'site_subtitle': SiteSettings.get('site_subtitle', 'Roleplay'),
-            'module_finance': SiteSettings.get('module_finance_enabled', 'true') == 'true',
-            'module_tasks': SiteSettings.get('module_tasks_enabled', 'true') == 'true',
-            'module_board': SiteSettings.get('module_board_enabled', 'true') == 'true',
-            'module_leave': SiteSettings.get('module_leave_enabled', 'true') == 'true',
-            'module_schedule': SiteSettings.get('module_schedule_enabled', 'true') == 'true',
+            'module_finance': SiteSettings.get('module_finance_enabled', 'true') == 'true' and is_feature_enabled('finance'),
+            'module_tasks': SiteSettings.get('module_tasks_enabled', 'true') == 'true' and is_feature_enabled('tasks'),
+            'module_board': SiteSettings.get('module_board_enabled', 'true') == 'true' and is_feature_enabled('board'),
+            'module_leave': SiteSettings.get('module_leave_enabled', 'true') == 'true' and is_feature_enabled('leave'),
+            'module_schedule': SiteSettings.get('module_schedule_enabled', 'true') == 'true' and is_feature_enabled('schedule'),
             'module_notifications': SiteSettings.get('module_notifications_enabled', 'true') == 'true',
         }
     
